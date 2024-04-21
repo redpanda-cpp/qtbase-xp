@@ -337,3 +337,7 @@ tst_*.xml
 CMakeUserPresets.json
 /.vs/
 /out/
+
+# redpanda-cpp: CI files
+assets
+build
