@@ -63,7 +63,7 @@
 #    define Q_ADDRCONFIG          AI_ADDRCONFIG
 #  endif
 #elif defined Q_OS_WIN
-#  include <ws2tcpip.h>
+#  include <qt_windows.h>
 
 #  define QT_SOCKLEN_T int
 #endif

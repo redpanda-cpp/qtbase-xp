@@ -62,14 +62,6 @@
 #  include <private/qcore_unix_p.h>
 #else
 #  include <qt_windows.h>
-
-// RtlGenRandom is not exported by its name in advapi32.dll, but as SystemFunction036
-// See https://msdn.microsoft.com/en-us/library/windows/desktop/aa387694(v=vs.85).aspx
-// Implementation inspired on https://hg.mozilla.org/mozilla-central/file/722fdbff1efc/security/nss/lib/freebl/win_rand.c#l146
-// Argument why this is safe to use: https://bugzilla.mozilla.org/show_bug.cgi?id=504270
-extern "C" {
-DECLSPEC_IMPORT BOOLEAN WINAPI SystemFunction036(PVOID RandomBuffer, ULONG RandomBufferLength);
-}
 #endif
 
 #if defined(Q_OS_ANDROID) && !defined(Q_OS_ANDROID_EMBEDDED)
