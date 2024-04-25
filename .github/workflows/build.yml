@@ -1,0 +1,76 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        arch: [32]
+    runs-on: windows-2019
+    defaults:
+      run:
+        shell: bash
+    env:
+      _QT_VERSION: "5.15.13"
+      _QT_NAME: mingw114_${{ matrix.arch }}-redpanda
+      _REDPANDA_MINGW_RELEASE: "11.4.0-r0"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup toolchain
+        run: |
+          curl -LO https://github.com/redpanda-cpp/toolchain-win32-mingw-xp/releases/download/$_REDPANDA_MINGW_RELEASE/mingw32-$_REDPANDA_MINGW_RELEASE.7z
+          7z x mingw32-$_REDPANDA_MINGW_RELEASE.7z
+
+      - name: Prepare source
+        run: |
+          git clone https://github.com/qt/qtsvg.git --branch=v$_QT_VERSION-lts-lgpl --depth=1
+          git clone https://github.com/qt/qttools.git --branch=v$_QT_VERSION-lts-lgpl --depth=1
+
+      - name: Build
+        run: |
+          export PATH="/c/Qt/$_QT_VERSION/$_QT_NAME/bin:$PWD/mingw${{ matrix.arch }}/bin:$PATH"
+
+          ./configure.bat \
+            -prefix /c/Qt/$_QT_VERSION/$_QT_NAME -release \
+            -opensource -confirm-license \
+            -release -optimize-size -static -static-runtime -platform win32-g++ \
+            -opengl desktop -no-angle -no-icu -qt-zlib -qt-pcre -qt-libpng -qt-libjpeg -qt-freetype -no-fontconfig -qt-harfbuzz -no-ssl -no-openssl \
+            -no-style-windowsvista -no-direct2d -no-directwrite -no-feature-directwrite2 \
+            -nomake examples -nomake tests -nomake tools
+          mingw32-make -j$(nproc)
+          mingw32-make install
+
+          pushd qtsvg
+          {
+            qmake .
+            mingw32-make -j$(nproc)
+            mingw32-make install
+          }
+          popd
+
+          pushd qttools
+          {
+            qmake .
+            mingw32-make -j$(nproc)
+            mingw32-make install
+          }
+          popd
+
+          7z a -t7z -mx=9 -ms=on -mqs=on -mf=BCJ2 -m0=LZMA2:d=64m:fb=273:c=256m $_QT_NAME.7z /c/Qt/$_QT_VERSION
+
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: Qt ${{ env._QT_VERSION }} - ${{ env._QT_NAME }}
+          path: ${{ env._QT_NAME }}.7z
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ env._QT_NAME }}.7z
