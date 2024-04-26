@@ -913,6 +913,29 @@ namespace WinXPThunk {
     } // namespace MSVCRT
 
     namespace Shell32 {
+        namespace Detail {
+            struct GuidComp {
+                bool operator()(const GUID &lhs, const GUID &rhs) const {
+                    return memcmp(&lhs, &rhs, sizeof(GUID)) < 0;
+                }
+            };
+
+            inline const std::map<GUID, int, GuidComp> KnownFolderClsidMap = {
+                { FOLDERID_Desktop, CSIDL_DESKTOP },
+                { FOLDERID_Documents, CSIDL_MYDOCUMENTS },
+                { FOLDERID_Fonts, CSIDL_FONTS },
+                { FOLDERID_LocalAppData, CSIDL_LOCAL_APPDATA },
+                { FOLDERID_LocalAppDataLow, CSIDL_LOCAL_APPDATA },
+                { FOLDERID_Music, CSIDL_MYMUSIC },
+                { FOLDERID_Pictures, CSIDL_MYPICTURES },
+                { FOLDERID_ProgramData, CSIDL_COMMON_APPDATA },
+                { FOLDERID_Programs, CSIDL_PROGRAMS },
+                { FOLDERID_RoamingAppData, CSIDL_APPDATA },
+                { FOLDERID_Videos, CSIDL_MYVIDEO },
+                // Not mapped: FOLDERID_Downloads - ok, Qt handles it
+            };
+        }
+
         // Windows Vista
         inline HRESULT WINAPI SHCreateItemFromIDList(
             _In_ PCIDLIST_ABSOLUTE pidl,
@@ -994,18 +1017,16 @@ namespace WinXPThunk {
                 return E_INVALIDARG;
             *ppszPath = nullptr;
 
-            // the only use in Qt is to determine config path
-            int csidl = -1;
-            if (rfid == FOLDERID_ProgramData)
-                csidl = CSIDL_COMMON_APPDATA;
-            else if (rfid == FOLDERID_RoamingAppData)
-                csidl = CSIDL_APPDATA;
-            if (csidl != -1) {
+            if (
+                auto it = Detail::KnownFolderClsidMap.find(rfid);
+                it != Detail::KnownFolderClsidMap.end()
+            ) {
+                int csidl = it->second;
                 wchar_t *buf = (wchar_t *)CoTaskMemAlloc(MAX_PATH * sizeof(wchar_t));
                 if (!buf)
                     return E_OUTOFMEMORY;
 
-                HRESULT hr = SHGetFolderPathW(nullptr, csidl, hToken, dwFlags | csidl, buf);
+                HRESULT hr = SHGetFolderPathW(nullptr, dwFlags | csidl, hToken, 0, buf);
                 if (SUCCEEDED(hr))
                     *ppszPath = buf;
                 else
