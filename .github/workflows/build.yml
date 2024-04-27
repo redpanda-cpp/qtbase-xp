@@ -7,23 +7,23 @@ jobs:
     name: Build
     strategy:
       matrix:
-        arch: [32]
+        arch: [32, 64]
     runs-on: windows-2019
     defaults:
       run:
         shell: bash
     env:
       _QT_VERSION: "5.15.13"
-      _QT_NAME: mingw114_${{ matrix.arch }}-redpanda
-      _REDPANDA_MINGW_RELEASE: "11.4.0-r0"
+      _QT_NAME: mingw132_${{ matrix.arch }}-redpanda
+      _MINGW_LITE_RELEASE: "13.2.0-r4"
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Setup toolchain
         run: |
-          curl -LO https://github.com/redpanda-cpp/toolchain-win32-mingw-xp/releases/download/$_REDPANDA_MINGW_RELEASE/mingw32-$_REDPANDA_MINGW_RELEASE.7z
-          7z x mingw32-$_REDPANDA_MINGW_RELEASE.7z
+          curl -LO https://github.com/redpanda-cpp/mingw-lite/releases/download/$_MINGW_LITE_RELEASE/mingw${{ matrix.arch }}-ucrt-$_MINGW_LITE_RELEASE.7z
+          7z x mingw${{ matrix.arch }}-ucrt-$_MINGW_LITE_RELEASE.7z
 
       - name: Prepare source
         run: |

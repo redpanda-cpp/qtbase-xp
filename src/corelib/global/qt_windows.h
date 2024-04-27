@@ -872,46 +872,6 @@ namespace WinXPThunk {
         }
     } // namespace Kernel32
 
-    namespace MSVCRT {
-        // Windows Vista
-        inline errno_t _wgetenv_s(
-            size_t *pReturnValue,
-            wchar_t *buffer,
-            size_t numberOfElements,
-            const wchar_t *varname
-        ) {
-            using type = decltype(&_wgetenv_s);
-            static type real = (type)GetProcAddress(GetModuleHandleW(L"msvcrt.dll"), "_wgetenv_s");
-            if (real)
-                return real(pReturnValue, buffer, numberOfElements, varname);
-
-            if (!pReturnValue || !varname)
-                return EINVAL;
-            if (!buffer && numberOfElements > 0)
-                return EINVAL;
-
-            wchar_t *env = _wgetenv(varname);
-            if (env) {
-                size_t len = wcslen(env) + 1;
-                if (len > numberOfElements) {
-                    *pReturnValue = len;
-                    if (buffer)
-                        buffer[0] = L'\0';
-                    return ERANGE;
-                } else {
-                    *pReturnValue = len;
-                    wcscpy(buffer, env);
-                    return 0;
-                }
-            } else {
-                *pReturnValue = 0;
-                if (buffer && numberOfElements > 0)
-                    buffer[0] = L'\0';
-                return 0;
-            }
-        }
-    } // namespace MSVCRT
-
     namespace Shell32 {
         namespace Detail {
             struct GuidComp {
@@ -1237,10 +1197,6 @@ template<> inline const GUID &__mingw_uuidof<WinXPType::IFileDialogEvents>() {
 #define GetTickCount64 WinXPThunk::Kernel32::GetTickCount64
 #define GetUserPreferredUILanguages WinXPThunk::Kernel32::GetUserPreferredUILanguages
 #define RaiseFailFastException WinXPThunk::Kernel32::RaiseFailFastException
-
-#ifndef _UCRT
-# define _wgetenv_s WinXPThunk::MSVCRT::_wgetenv_s
-#endif
 
 #define SHCreateItemFromIDList WinXPThunk::Shell32::SHCreateItemFromIDList
 #define SHCreateItemFromParsingName WinXPThunk::Shell32::SHCreateItemFromParsingName
