@@ -982,6 +982,7 @@ namespace WinXPThunk {
                 hr = SHCreateItemFromIDList(pidl, riid, ppv);
                 ILFree(pidl);
             }
+            return hr;
         }
 
         // Windows Vista
