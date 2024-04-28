@@ -37,6 +37,13 @@
 **
 ****************************************************************************/
 
+#if defined(WINVER) && WINVER < 0x0603
+#  undef WINVER
+#endif
+#if !defined(WINVER)
+#  define WINVER 0x0603 // Enable pointer functions for MinGW
+#endif
+
 #include "qwindowspointerhandler.h"
 #include "qwindowskeymapper.h"
 #include "qwindowscontext.h"

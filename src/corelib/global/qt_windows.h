@@ -48,13 +48,13 @@
 #if defined(Q_CC_MINGW)
 // mingw's windows.h does not set _WIN32_WINNT, resulting breaking compilation
 #  ifndef WINVER
-#    define WINVER 0x0501
+#    define WINVER 0x601
 #  endif
 #  ifndef _WIN32_WINNT
-#    define _WIN32_WINNT 0x0501
+#    define _WIN32_WINNT 0x601
 #  endif
 #  ifndef NTDDI_VERSION
-#    define NTDDI_VERSION 0x05010300
+#    define NTDDI_VERSION 0x06000000
 #  endif
 #endif
 
@@ -156,351 +156,6 @@
 #include <shlobj.h>
 #include <versionhelpers.h>
 
-inline namespace WinXPType {
-    struct CHANGEFILTERSTRUCT {
-        DWORD cbSize;
-        DWORD ExtStatus;
-    };
-    using PCHANGEFILTERSTRUCT = CHANGEFILTERSTRUCT *;
-
-    enum FDAP { };
-
-    enum FDE_OVERWRITE_RESPONSE { };
-
-    enum FDE_SHAREVIOLATION_RESPONSE { };
-
-    using FILEOPENDIALOGOPTIONS = DWORD;
-
-    enum FILE_INFO_BY_HANDLE_CLASS {};
-
-    using HPOWERNOTIFY = HANDLE;
-    using PHPOWERNOTIFY = HPOWERNOTIFY *;
-
-    using HTOUCHINPUT = HANDLE;
-
-    struct IFileDialogEvents;
-    struct IFileDialog : public IModalWindow
-    {
-        virtual HRESULT STDMETHODCALLTYPE SetFileTypes(
-            UINT cFileTypes,
-            const COMDLG_FILTERSPEC *rgFilterSpec) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetFileTypeIndex(
-            UINT iFileType) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetFileTypeIndex(
-            UINT *piFileType) = 0;
-        virtual HRESULT STDMETHODCALLTYPE Advise(
-            IFileDialogEvents *pfde,
-            DWORD *pdwCookie) = 0;
-        virtual HRESULT STDMETHODCALLTYPE Unadvise(
-            DWORD dwCookie) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetOptions(
-            FILEOPENDIALOGOPTIONS fos) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetOptions(
-            FILEOPENDIALOGOPTIONS *pfos) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetDefaultFolder(
-            IShellItem *psi) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetFolder(
-            IShellItem *psi) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetFolder(
-            IShellItem **ppsi) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetCurrentSelection(
-            IShellItem **ppsi) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetFileName(
-            LPCWSTR pszName) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetFileName(
-            LPWSTR *pszName) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetTitle(
-            LPCWSTR pszTitle) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetOkButtonLabel(
-            LPCWSTR pszText) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetFileNameLabel(
-            LPCWSTR pszLabel) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetResult(
-            IShellItem **ppsi) = 0;
-        virtual HRESULT STDMETHODCALLTYPE AddPlace(
-            IShellItem *psi,
-            FDAP fdap) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetDefaultExtension(
-            LPCWSTR pszDefaultExtension) = 0;
-        virtual HRESULT STDMETHODCALLTYPE Close(
-            HRESULT hr) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetClientGuid(
-            REFGUID guid) = 0;
-        virtual HRESULT STDMETHODCALLTYPE ClearClientData(
-            ) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetFilter(
-            IShellItemFilter *pFilter) = 0;
-    };
-
-    struct IFileDialog2 : public IFileDialog
-    {
-        virtual HRESULT STDMETHODCALLTYPE SetCancelButtonLabel(
-            LPCWSTR pszLabel) = 0;
-        virtual HRESULT STDMETHODCALLTYPE SetNavigationRoot(
-            IShellItem *psi) = 0;
-    };
-
-    struct IFileDialogEvents : public IUnknown
-    {
-        virtual HRESULT STDMETHODCALLTYPE OnFileOk(
-            IFileDialog *pfd) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnFolderChanging(
-            IFileDialog *pfd,
-            IShellItem *psiFolder) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnFolderChange(
-            IFileDialog *pfd) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnSelectionChange(
-            IFileDialog *pfd) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnShareViolation(
-            IFileDialog *pfd,
-            IShellItem *psi,
-            FDE_SHAREVIOLATION_RESPONSE *pResponse) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnTypeChange(
-            IFileDialog *pfd) = 0;
-        virtual HRESULT STDMETHODCALLTYPE OnOverwrite(
-            IFileDialog *pfd,
-            IShellItem *psi,
-            FDE_OVERWRITE_RESPONSE *pResponse) = 0;
-    };
-
-    struct IFileOpenDialog : public IFileDialog
-    {
-        virtual HRESULT STDMETHODCALLTYPE GetResults(
-            IShellItemArray **ppenum) = 0;
-        virtual HRESULT STDMETHODCALLTYPE GetSelectedItems(
-            IShellItemArray **ppsai) = 0;
-    };
-
-    struct NONCLIENTMETRICSW {
-        UINT cbSize;
-        int iBorderWidth;
-        int iScrollWidth;
-        int iScrollHeight;
-        int iCaptionWidth;
-        int iCaptionHeight;
-        LOGFONTW lfCaptionFont;
-        int iSmCaptionWidth;
-        int iSmCaptionHeight;
-        LOGFONTW lfSmCaptionFont;
-        int iMenuWidth;
-        int iMenuHeight;
-        LOGFONTW lfMenuFont;
-        LOGFONTW lfStatusFont;
-        LOGFONTW lfMessageFont;
-        int iPaddedBorderWidth;
-    };
-
-    struct NOTIFYICONDATAW {
-        DWORD cbSize;
-        HWND hWnd;
-        UINT uID;
-        UINT uFlags;
-        UINT uCallbackMessage;
-        HICON hIcon;
-        WCHAR szTip[128];
-        DWORD dwState;
-        DWORD dwStateMask;
-        WCHAR szInfo[256];
-        union {
-            UINT uTimeout;
-            UINT uVersion;
-        };
-        WCHAR szInfoTitle[64];
-        DWORD dwInfoFlags;
-        GUID guidItem;
-        HICON hBalloonIcon;
-    };
-
-    using PEN_FLAGS = UINT32;
-    using PEN_MASK = UINT32;
-    enum POINTER_BUTTON_CHANGE_TYPE { };
-    using POINTER_FLAGS = UINT32;
-    using POINTER_INPUT_TYPE = DWORD;
-    using TOUCH_FLAGS = UINT32;
-    using TOUCH_MASK = UINT32;
-    struct POINTER_INFO {
-        POINTER_INPUT_TYPE pointerType;
-        UINT32 pointerId;
-        UINT32 frameId;
-        POINTER_FLAGS pointerFlags;
-        HANDLE sourceDevice;
-        HWND hwndTarget;
-        POINT ptPixelLocation;
-        POINT ptHimetricLocation;
-        POINT ptPixelLocationRaw;
-        POINT ptHimetricLocationRaw;
-        DWORD dwTime;
-        UINT32 historyCount;
-        INT32 InputData;
-        DWORD dwKeyStates;
-        UINT64 PerformanceCount;
-        POINTER_BUTTON_CHANGE_TYPE ButtonChangeType;
-    };
-
-    struct POINTER_PEN_INFO {
-        POINTER_INFO pointerInfo;
-        PEN_FLAGS penFlags;
-        PEN_MASK penMask;
-        UINT32 pressure;
-        UINT32 rotation;
-        INT32 tiltX;
-        INT32 tiltY;
-    };
-
-    struct POINTER_TOUCH_INFO {
-        POINTER_INFO pointerInfo;
-        TOUCH_FLAGS touchFlags;
-        TOUCH_MASK touchMask;
-        RECT rcContact;
-        RECT rcContactRaw;
-        UINT32 orientation;
-        UINT32 pressure;
-    };
-
-    struct POWERBROADCAST_SETTING {
-        GUID PowerSetting;
-        DWORD DataLength;
-        UCHAR Data[1];
-    };
-    using PPOWERBROADCAST_SETTING = POWERBROADCAST_SETTING *;
-
-    enum SHSTOCKICONID {
-        SIID_DOCNOASSOC = 0,
-        SIID_FOLDER = 3,
-        SIID_FOLDEROPEN = 4,
-        SIID_DRIVE35 = 6,
-        SIID_DRIVEFIXED = 8,
-        SIID_DRIVENET = 9,
-        SIID_DRIVECD = 11,
-        SIID_HELP = 23,
-        SIID_RECYCLER = 31,
-        SIID_DRIVEDVD = 59,
-        SIID_SHIELD = 77,
-        SIID_WARNING = 78,
-        SIID_INFO = 79,
-        SIID_ERROR = 80,
-    };
-
-    struct SHSTOCKICONINFO {
-        DWORD cbSize;
-        HICON hIcon;
-        int iSysImageIndex;
-        int iIcon;
-        WCHAR szPath[MAX_PATH];
-    } ;
-
-    struct TOUCHINPUT {
-        LONG x;
-        LONG y;
-        HANDLE hSource;
-        DWORD dwID;
-        DWORD dwFlags;
-        DWORD dwMask;
-        DWORD dwTime;
-        ULONG_PTR dwExtraInfo;
-        DWORD cxContact;
-        DWORD cyContact;
-    };
-    using PTOUCHINPUT = TOUCHINPUT *;
-    using PCTOUCHINPUT = const TOUCHINPUT *;
-
-    struct WSAPOLLFD {
-        SOCKET fd;
-        short  events;
-        short  revents;
-    };
-    using LPWSAPOLLFD = WSAPOLLFD *;
-} // namespace WinXPType
-
-inline namespace WinXPConstant {
-    constexpr HRESULT DWM_E_COMPOSITIONDISABLED = 0x80263001;
-
-    constexpr int FOS_OVERWRITEPROMPT = 0x2;
-    constexpr int FOS_PICKFOLDERS = 0x20;
-    constexpr int FOS_FORCEFILESYSTEM = 0x40;
-    constexpr int FOS_ALLOWMULTISELECT = 0x200;
-    constexpr int FOS_PATHMUSTEXIST = 0x800;
-    constexpr int FOS_FILEMUSTEXIST = 0x1000;
-    constexpr int FOS_NOREADONLYRETURN = 0x8000;
-    constexpr int FOS_NODEREFERENCELINKS = 0x100000;
-    constexpr int FOS_FORCESHOWHIDDEN = 0x10000000;
-
-    constexpr IID IID_IFileDialog2 = {0x61744fc7, 0x85b5, 0x4791, 0xa9, 0xb0, 0x27, 0x22, 0x76, 0x30, 0x9b, 0x13};
-    constexpr IID IID_IFileDialogEvents = {0x973510db, 0x7d7f, 0x452b, 0x89, 0x75, 0x74, 0xa8, 0x58, 0x28, 0xd3, 0x54};
-    constexpr IID IID_IFileOpenDialog   = {0xd57c7288, 0xd4ad, 0x4768, 0xbe, 0x02, 0x9d, 0x96, 0x95, 0x32, 0xd9, 0x60};
-    constexpr IID IID_IFileSaveDialog   = {0x84bccd23, 0x5fde, 0x4cdb,0xae, 0xa4, 0xaf, 0x64, 0xb8, 0x3d, 0x78, 0xab};
-
-    constexpr int KF_FLAG_DONT_VERIFY = 0x00004000;
-
-    constexpr const wchar_t *LOCALE_NAME_USER_DEFAULT = nullptr;
-    constexpr const wchar_t *LOCALE_NAME_INVARIANT = L"";
-    constexpr const wchar_t *LOCALE_NAME_SYSTEM_DEFAULT = L"!x-sys-default-locale";
-
-    constexpr int LOCALE_SSORTLOCALE = 0x0000007b;
-
-    constexpr int MUI_LANGUAGE_ID = 0x4;
-    constexpr int MUI_LANGUAGE_NAME = 0x8;
-
-    constexpr int MSGFLT_ALLOW = 1;
-
-    constexpr int NID_INTEGRATED_TOUCH = 0x00000001;
-    constexpr int NID_EXTERNAL_TOUCH = 0x00000002;
-    constexpr int NID_READY = 0x00000080;
-
-    constexpr int NIF_SHOWTIP = 0x00000080;
-
-    constexpr int NIIF_LARGE_ICON = 0x00000020;
-
-    constexpr int NOTIFYICON_VERSION_4 = 4;
-
-    constexpr int PBT_POWERSETTINGCHANGE = 32787;
-
-    constexpr int PEN_FLAG_BARREL = 0x00000001;
-    constexpr int PEN_FLAG_INVERTED = 0x00000002;
-    constexpr int PEN_FLAG_ERASER = 0x00000004;
-
-    constexpr int PEN_MASK_PRESSURE = 0x00000001;
-    constexpr int PEN_MASK_ROTATION = 0x00000002;
-    constexpr int PEN_MASK_TILT_X = 0x00000004;
-    constexpr int PEN_MASK_TILT_Y = 0x00000008;
-
-    constexpr int POINTER_FLAG_DOWN = 0x00010000;
-    constexpr int POINTER_FLAG_UP = 0x00040000;
-
-    constexpr int POINTER_MESSAGE_FLAG_INCONTACT = 0x00000004;
-
-    constexpr int SHGSI_LINKOVERLAY = SHGFI_LINKOVERLAY;
-
-    constexpr SHSTOCKICONID SIID_INVALID = SHSTOCKICONID(-1);
-
-    constexpr int SM_DIGITIZER = 94;
-    constexpr int SM_MAXIMUMTOUCHES = 95;
-
-    constexpr int TOUCHEVENTF_DOWN = 0x0002;
-    constexpr int TOUCHEVENTF_UP = 0x0004;
-
-    constexpr int TOUCH_MASK_CONTACTAREA = 0x00000001;
-    constexpr int TOUCH_MASK_PRESSURE = 0x00000004;
-
-    constexpr int TOUCHINPUTMASKF_CONTACTAREA = 0x0004;
-
-    constexpr int WM_DWMNCRENDERINGCHANGED = 0x031f;
-} // namespace WinXPConstant
-
-inline namespace WinXPMacro {
-    constexpr inline WORD GET_POINTERID_WPARAM(DWORD wParam) {
-        return LOWORD(wParam);
-    }
-
-    constexpr inline bool IS_POINTER_FLAG_SET_WPARAM(DWORD wParam, int flag) {
-        return (HIWORD(wParam) & flag) == flag;
-    }
-
-    constexpr inline bool IS_POINTER_INCONTACT_WPARAM(DWORD wParam) {
-        return IS_POINTER_FLAG_SET_WPARAM(wParam, POINTER_MESSAGE_FLAG_INCONTACT);
-    }
-} // namespace WinXPMacro
-
 namespace WinXPThunk {
     namespace DwmApi {
         // Windows Vista
@@ -513,7 +168,7 @@ namespace WinXPThunk {
             if (real)
                 return real(hWnd, pBlurBehind);
 
-            return DWM_E_COMPOSITIONDISABLED;
+            return 0x80263001; // DWM_E_COMPOSITIONDISABLED
         }
 
         // Windows Vista
@@ -695,7 +350,7 @@ namespace WinXPThunk {
             _Inout_ PULONG SizePointer
         ) {
             if (IsWindowsVistaOrGreater())
-                return ::GetAdaptersAddresses(Family, Flags, Reserved, (IP_ADAPTER_ADDRESSES_XP *)AdapterAddresses, SizePointer);
+                return ::GetAdaptersAddresses(Family, Flags, Reserved, AdapterAddresses, SizePointer);
 
             // Windows XP: simply fail
             // TODO: convert data format
@@ -939,7 +594,7 @@ namespace WinXPThunk {
             PIDLIST_ABSOLUTE pidl;
             HRESULT hr = SHParseDisplayName(pszPath, pbc, &pidl, 0, nullptr);
             if (SUCCEEDED(hr)) {
-                hr = SHCreateItemFromIDList(pidl, riid, ppv);
+                hr = WinXPThunk::Shell32::SHCreateItemFromIDList(pidl, riid, ppv);
                 ILFree(pidl);
             }
             return hr;
@@ -1014,7 +669,7 @@ namespace WinXPThunk {
         // Windows XP
         inline BOOL WINAPI Shell_NotifyIconW(
             _In_ DWORD dwMessage,
-            _In_ WinXPType::NOTIFYICONDATAW *lpData
+            _In_ NOTIFYICONDATAW *lpData
         ) {
             return ::Shell_NotifyIconW(dwMessage, (_NOTIFYICONDATAW *)lpData);
         }
@@ -1162,22 +817,6 @@ namespace WinXPThunk {
         }
     } // namespace User32
 } // namespace WinXPThunk
-
-template<> inline const GUID &__mingw_uuidof<WinXPType::IFileDialogEvents>() {
-    return WinXPConstant::IID_IFileDialogEvents;
-}
-
-#define IP_ADAPTER_ADDRESSES IP_ADAPTER_ADDRESSES_LH
-#define PIP_ADAPTER_ADDRESSES PIP_ADAPTER_ADDRESSES_LH
-#define IP_ADAPTER_UNICAST_ADDRESS IP_ADAPTER_UNICAST_ADDRESS_LH
-#define PIP_ADAPTER_UNICAST_ADDRESS PIP_ADAPTER_UNICAST_ADDRESS_LH
-
-#define IFileDialog WinXPType::IFileDialog
-#define IFileDialog2 WinXPType::IFileDialog2
-#define IFileDialogEvents WinXPType::IFileDialogEvents
-#define IFileOpenDialog WinXPType::IFileOpenDialog
-#define NONCLIENTMETRICS WinXPType::NONCLIENTMETRICSW
-#define NOTIFYICONDATA WinXPType::NOTIFYICONDATAW
 
 #define DwmEnableBlurBehindWindow WinXPThunk::DwmApi::DwmEnableBlurBehindWindow
 #define DwmGetWindowAttribute WinXPThunk::DwmApi::DwmGetWindowAttribute

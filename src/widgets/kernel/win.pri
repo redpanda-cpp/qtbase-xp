@@ -2,6 +2,6 @@
 # --------------------------------------------------------------------
 
 !winrt {
-    LIBS_PRIVATE *= -luxtheme
+    LIBS_PRIVATE *= -luxtheme -ldwmapi
     QMAKE_USE_PRIVATE += shell32
 }

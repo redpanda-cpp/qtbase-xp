@@ -112,7 +112,7 @@ unix: CONFIG += explicitlib
 macos: CONFIG += testcase_no_bundle
 
 # Override MinGW's definition in _mingw.h
-mingw: DEFINES += WINVER=0x0501 _WIN32_WINNT=0x0501
+mingw: DEFINES += WINVER=0x0601 _WIN32_WINNT=0x0601
 
 # By default, the following features should not be used in Qt's own
 # implementation, so declare them invisible to Qt modules.
