@@ -150,13 +150,47 @@
 #include <iphlpapi.h>
 #include <namedpipeapi.h>
 #include <netioapi.h>
+#include <ntsecapi.h>
 #include <ntstatus.h>
 #include <knownfolders.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <versionhelpers.h>
+#include <winternl.h>
+#include <ws2tcpip.h>
+
+#undef CreateNamedPipe
+#ifndef _WIN64
+# undef GetGeoInfo
+# undef GetModuleHandleEx
+# undef GetVolumePathNamesForVolumeName
+#endif
+#undef RtlGenRandom
+#undef Shell_NotifyIcon
+
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 
 namespace WinXPThunk {
+    namespace AdvApi32 {
+        // Windows XP
+#ifndef _WIN64
+        inline BOOLEAN WINAPI RtlGenRandom(
+            _Out_ PVOID RandomBuffer,
+            _In_ ULONG RandomBufferLength
+        ) {
+            using type = decltype(&RtlGenRandom);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"advapi32.dll"), "SystemFunction036");
+            if (real)
+                return real(RandomBuffer, RandomBufferLength);
+
+            // the only use of this function is to fill buffer
+            // simply fail, Qt will handle it
+            SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+            return FALSE;
+        }
+#endif
+    } // namespace AdvApi32
+
     namespace DwmApi {
         // Windows Vista
         inline HRESULT WINAPI DwmEnableBlurBehindWindow(
@@ -349,11 +383,13 @@ namespace WinXPThunk {
             _Inout_ IP_ADAPTER_ADDRESSES_LH *AdapterAddresses,
             _Inout_ PULONG SizePointer
         ) {
-            if (IsWindowsVistaOrGreater())
-                return ::GetAdaptersAddresses(Family, Flags, Reserved, AdapterAddresses, SizePointer);
+            using type = decltype(&GetAdaptersAddresses);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "GetAdaptersAddresses");
+            if (real && IsWindowsVistaOrGreater())
+                return real(Family, Flags, Reserved, AdapterAddresses, SizePointer);
 
-            // Windows XP: simply fail
-            // TODO: convert data format
+            // the result is not used by Red Panda C++
+            // simply fail, Qt will handle it
             SetLastError(ERROR_NOT_SUPPORTED);
             return ERROR_NOT_SUPPORTED;
         }
@@ -382,6 +418,22 @@ namespace WinXPThunk {
 
             return CancelIo(hFile);
         }
+
+        // Windows XP SP1
+#ifndef _WIN64
+        inline BOOL WINAPI CheckRemoteDebuggerPresent(
+            _In_ HANDLE hProcess,
+            _Inout_ PBOOL pbDebuggerPresent
+        ) {
+            using type = decltype(&CheckRemoteDebuggerPresent);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CheckRemoteDebuggerPresent");
+            if (real)
+                return real(hProcess, pbDebuggerPresent);
+
+            *pbDebuggerPresent = (hProcess == GetCurrentProcess()) && IsDebuggerPresent();
+            return TRUE;
+        }
+#endif
 
         // Windows Vista
         inline int WINAPI CompareStringExW(
@@ -441,6 +493,94 @@ namespace WinXPThunk {
             return FALSE;
         }
 
+        // Windows XP
+#ifndef _WIN64
+        inline int WINAPI GetGeoInfoW(
+            _In_ GEOID Location,
+            _In_ GEOTYPE GeoType,
+            _Out_writes_opt_(cchData) LPWSTR lpGeoData,
+            _In_ int cchData,
+            _In_ LANGID LangId
+        ) {
+            using type = decltype(&GetGeoInfoW);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetGeoInfoW");
+            if (real)
+                return real(Location, GeoType, lpGeoData, cchData, LangId);
+
+            // the only use in Qt is to determine system time zone
+            // return CN (UTC+8), which covers most people in the world
+            if (GeoType != GEO_ISO2) {
+                SetLastError(ERROR_INVALID_PARAMETER);
+                return 0;
+            }
+            lpGeoData[0] = L'C';
+            lpGeoData[1] = L'N';
+            lpGeoData[2] = 0;
+            return 3;
+        }
+#endif
+
+        // Windows XP
+#ifndef _WIN64
+        inline BOOL WINAPI GetModuleHandleExW(
+            _In_ DWORD dwFlags,
+            _In_opt_ LPCWSTR lpModuleName,
+            _Out_ HMODULE *phModule
+        ) {
+            using type = decltype(&GetModuleHandleExW);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetModuleHandleExW");
+            if (real)
+                return real(dwFlags, lpModuleName, phModule);
+
+            // the only use in Qt is to prevent unloading of the plugin
+            // simply fail, we are building static Qt
+            SetLastError(ERROR_NOT_SUPPORTED);
+            return FALSE;
+        }
+#endif
+
+        // Windows XP
+#ifndef _WIN64
+        inline void GetNativeSystemInfo(
+            _Out_ LPSYSTEM_INFO lpSystemInfo
+        ) {
+            using type = decltype(&GetNativeSystemInfo);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetNativeSystemInfo");
+            if (real)
+                return real(lpSystemInfo);
+
+            GetSystemInfo(lpSystemInfo);
+        }
+#endif
+
+        // Windows XP SP1
+#ifndef _WIN64
+        inline DWORD WINAPI GetProcessId(
+            _In_ HANDLE Process
+        ) {
+            using type = decltype(&GetProcessId);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetProcessId");
+            if (real)
+                return real(Process);
+
+            static decltype(&NtQueryInformationProcess) pNtQueryInformationProcess = (decltype(&NtQueryInformationProcess))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess");
+            static decltype(&RtlNtStatusToDosError) pRtlNtStatusToDosError = (decltype(&RtlNtStatusToDosError))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlNtStatusToDosError");
+            if (!pNtQueryInformationProcess || !pRtlNtStatusToDosError) {
+                SetLastError(ERROR_PROC_NOT_FOUND);
+                return 0;
+            }
+
+            PROCESS_BASIC_INFORMATION processBasicInfo;
+            NTSTATUS status = pNtQueryInformationProcess(Process, ProcessBasicInformation, &processBasicInfo, sizeof(processBasicInfo), nullptr);
+            if (NT_SUCCESS(status)) {
+                return processBasicInfo.UniqueProcessId;
+            } else {
+                SetLastError(pRtlNtStatusToDosError(status));
+                return 0;
+            }
+        }
+#endif
+
         // Windows Vista
         inline ULONGLONG GetTickCount64() {
             using type = decltype(&GetTickCount64);
@@ -450,6 +590,26 @@ namespace WinXPThunk {
 
             return GetTickCount();
         }
+
+        // Windows XP
+#ifndef _WIN64
+        inline GEOID WINAPI GetUserGeoID(
+            _In_ GEOCLASS GeoClass
+        ) {
+            using type = decltype(&GetUserGeoID);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetUserGeoID");
+            if (real)
+                return real(GeoClass);
+
+            // the only use in Qt is to determine system time zone
+            // return CN (UTC+8), which covers most people in the world
+            if (GeoClass != GEOCLASS_NATION) {
+                SetLastError(ERROR_INVALID_PARAMETER);
+                return GEOID_NOT_AVAILABLE;
+            }
+            return 45;
+        }
+#endif
 
         // Windows Vista
         inline BOOL GetUserPreferredUILanguages(
@@ -492,7 +652,7 @@ namespace WinXPThunk {
                     localeName = it->second;
                 }
 
-                int length = wcslen(localeName);
+                unsigned long length = wcslen(localeName);
                 if (querySize) {
                     *pcchLanguagesBuffer = length + 2; // double null-terminated
                     *pulNumLanguages = 1;
@@ -512,6 +672,26 @@ namespace WinXPThunk {
             }
         }
 
+        // Windows XP
+#ifndef _WIN64
+        inline BOOL WINAPI GetVolumePathNamesForVolumeNameW(
+            _In_ LPCWSTR lpszVolumeName,
+            _Out_writes_(cchBufferLength) LPWCH lpszVolumePathNames,
+            _In_ DWORD cchBufferLength,
+            _Out_ PDWORD lpcchReturnLength
+        ) {
+            using type = decltype(&GetVolumePathNamesForVolumeNameW);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetVolumePathNamesForVolumeNameW");
+            if (real)
+                return real(lpszVolumeName, lpszVolumePathNames, cchBufferLength, lpcchReturnLength);
+
+            // the only use in Qt is to convert volume UUID to drive letter
+            // simply fail
+            SetLastError(ERROR_NOT_SUPPORTED);
+            return FALSE;
+        }
+#endif
+
         // Windows 7
         inline void WINAPI RaiseFailFastException(
             _In_opt_ PEXCEPTION_RECORD pExceptionRecord,
@@ -525,7 +705,85 @@ namespace WinXPThunk {
 
             TerminateProcess(GetCurrentProcess(), pExceptionRecord ? pExceptionRecord->ExceptionCode : STATUS_FAIL_FAST_EXCEPTION);
         }
+
+        // Windows XP
+#ifndef _WIN64
+        inline BOOL WINAPI TzSpecificLocalTimeToSystemTime(
+            _In_opt_ const TIME_ZONE_INFORMATION *lpTimeZoneInformation,
+            _In_ const SYSTEMTIME *lpLocalTime,
+            _Out_ LPSYSTEMTIME lpUniversalTime
+        ) {
+            using type = decltype(&TzSpecificLocalTimeToSystemTime);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "TzSpecificLocalTimeToSystemTime");
+            if (real)
+                return real(lpTimeZoneInformation, lpLocalTime, lpUniversalTime);
+
+            long long fileTimeNs;
+            if (!SystemTimeToFileTime(lpLocalTime, (FILETIME *)&fileTimeNs))
+                return FALSE;
+            fileTimeNs += lpTimeZoneInformation->Bias * 60LL * 10000000LL;
+            if (!FileTimeToSystemTime((FILETIME *)&fileTimeNs, lpUniversalTime))
+                return FALSE;
+            return TRUE;
+        }
+#endif
+
+        // Windows Vista [by documentation]
+        // Windows XP SP0 [by implementation]
+#ifndef _WIN64
+        inline DWORD WINAPI WTSGetActiveConsoleSessionId()
+        {
+            using type = decltype(&WTSGetActiveConsoleSessionId);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "WTSGetActiveConsoleSessionId");
+            if (real)
+                return real();
+
+            return 0xFFFFFFFF;
+        }
+#endif
     } // namespace Kernel32
+
+#ifndef _UCRT
+    namespace MSVCRT {
+        // Windows Vista
+        inline errno_t _wgetenv_s(
+            size_t *pReturnValue,
+            wchar_t *buffer,
+            size_t numberOfElements,
+            const wchar_t *varname
+        ) {
+            using type = decltype(&_wgetenv_s);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"msvcrt.dll"), "_wgetenv_s");
+            if (real)
+                return real(pReturnValue, buffer, numberOfElements, varname);
+
+            if (!pReturnValue || !varname)
+                return EINVAL;
+            if (!buffer && numberOfElements > 0)
+                return EINVAL;
+
+            wchar_t *env = _wgetenv(varname);
+            if (env) {
+                size_t len = wcslen(env) + 1;
+                if (len > numberOfElements) {
+                    *pReturnValue = len;
+                    if (buffer)
+                        buffer[0] = L'\0';
+                    return ERANGE;
+                } else {
+                    *pReturnValue = len;
+                    wcscpy(buffer, env);
+                    return 0;
+                }
+            } else {
+                *pReturnValue = 0;
+                if (buffer && numberOfElements > 0)
+                    buffer[0] = L'\0';
+                return 0;
+            }
+        }
+    } // namespace MSVCRT
+#endif
 
     namespace Shell32 {
         namespace Detail {
@@ -562,20 +820,9 @@ namespace WinXPThunk {
             if (real)
                 return real(pidl, riid, ppv);
 
-            *ppv = nullptr;
-            IPersistIDList *ppidl;
-            IShellItem *psi;
-            HRESULT hr = SHCoCreateInstance(nullptr, &CLSID_ShellItem, nullptr, __uuidof(IShellItem), (void **)&psi);
-            if (SUCCEEDED(hr)) {
-                hr = psi->QueryInterface(riid, ppv);
-                psi->Release();
-
-                hr = ppidl->SetIDList(pidl);
-                if (SUCCEEDED(hr))
-                    hr = ppidl->QueryInterface(riid, ppv);
-                ppidl->Release();
-            }
-            return hr;
+            // the only use in Qt is to create file with clsid url scheme
+            // simply fail since SHGetKnownFolderIDList is not implemented
+            return __HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
         }
 
         // Windows Vista
@@ -590,14 +837,11 @@ namespace WinXPThunk {
             if (real)
                 return real(pszPath, pbc, riid, ppv);
 
-            *ppv = nullptr;
-            PIDLIST_ABSOLUTE pidl;
-            HRESULT hr = SHParseDisplayName(pszPath, pbc, &pidl, 0, nullptr);
-            if (SUCCEEDED(hr)) {
-                hr = WinXPThunk::Shell32::SHCreateItemFromIDList(pidl, riid, ppv);
-                ILFree(pidl);
-            }
-            return hr;
+            // usages in Qt:
+            //   1. moveToTrash: only applies to Windows 8+
+            //   2. file dialog setDirectory: only applies to Windows Vista+
+            // simply fail
+            return __HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
         }
 
         // Windows Vista
@@ -816,7 +1060,157 @@ namespace WinXPThunk {
             return UpdateLayeredWindow(hwnd, pULWInfo->hdcDst, (POINT *)pULWInfo->pptDst, (SIZE *)pULWInfo->psize, pULWInfo->hdcSrc, (POINT *)pULWInfo->pptSrc, pULWInfo->crKey, (BLENDFUNCTION *)pULWInfo->pblend, pULWInfo->dwFlags);
         }
     } // namespace User32
+
+    namespace Ws2_32 {
+        // Windows XP
+#ifndef _WIN64
+        inline void WSAAPI freeaddrinfo(
+            _In_ PADDRINFOA pAddrInfo
+        ) {
+            using type = decltype(&freeaddrinfo);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "freeaddrinfo");
+            if (real)
+                return real(pAddrInfo);
+
+            while (pAddrInfo) {
+                addrinfo *next = pAddrInfo->ai_next;
+                free(pAddrInfo->ai_addr);
+                free(pAddrInfo);
+                pAddrInfo = next;
+            }
+        }
+#endif
+
+        namespace Detail {
+#ifndef _WIN64
+            inline addrinfo *AddrInfoFromHostent(const hostent *host, int idx) {
+                // this is the last entry
+                if (host->h_addr_list[idx] == nullptr)
+                    return nullptr;
+
+                addrinfo *next = AddrInfoFromHostent(host, idx + 1);
+
+                addrinfo *result = (addrinfo *)malloc(sizeof(addrinfo));
+                if (!result) {
+                    Ws2_32::freeaddrinfo(next);
+                    return nullptr;
+                }
+
+                result->ai_flags = 0;
+                result->ai_family = AF_INET;
+                result->ai_socktype = SOCK_STREAM;
+                result->ai_protocol = IPPROTO_TCP;
+                result->ai_canonname = nullptr;
+                result->ai_addrlen = sizeof(sockaddr_in);
+
+                sockaddr_in *addr = (sockaddr_in *)malloc(sizeof(sockaddr_in));
+                if (!addr) {
+                    Ws2_32::freeaddrinfo(result);
+                    Ws2_32::freeaddrinfo(next);
+                    return nullptr;
+                }
+
+                addr->sin_family = AF_INET;
+                addr->sin_port = 0;
+                addr->sin_addr = *(in_addr *)host->h_addr;
+                memset(addr->sin_zero, 0, sizeof(addr->sin_zero));
+                result->ai_addr = (sockaddr *)addr;
+
+                result->ai_next = next;
+                return result;
+            }
+#endif
+        } // namespace Detail
+
+        // Windows XP
+#ifndef _WIN64
+        inline INT WSAAPI getaddrinfo(
+            _In_opt_ PCSTR pNodeName,
+            _In_opt_ PCSTR pServiceName,
+            _In_opt_ const ADDRINFOA *pHints,
+            _Out_ PADDRINFOA *ppResult
+        ) {
+            using type = decltype(&getaddrinfo);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "getaddrinfo");
+            if (real)
+                return real(pNodeName, pServiceName, pHints, ppResult);
+
+            // the only use in Qt is simple lookup
+            // implement it with gethostbyname
+            if (!pNodeName)
+                return WSAHOST_NOT_FOUND;
+            if (pHints && pHints->ai_family != AF_UNSPEC)
+                return WSAEAFNOSUPPORT;
+
+            struct hostent *host = gethostbyname(pNodeName);
+            if (!host)
+                return WSANO_DATA;
+
+            addrinfo *result = Detail::AddrInfoFromHostent(host, 0);
+            if (!result)
+                return WSA_NOT_ENOUGH_MEMORY;
+            *ppResult = result;
+            return 0;
+        }
+#endif
+
+        // Windows XP
+#ifndef _WIN64
+        inline INT WSAAPI getnameinfo(
+            _In_ const SOCKADDR *pSockaddr,
+            _In_ socklen_t SockaddrLength,
+            _Out_ PCHAR pNodeBuffer,
+            _In_ DWORD NodeBufferLength,
+            _Out_ PCHAR pServiceBuffer,
+            _In_ DWORD ServiceBufferLength,
+            _In_ INT Flags
+        ) {
+            using type = decltype(&getnameinfo);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "getnameinfo");
+            if (real)
+                return real(pSockaddr, SockaddrLength, pNodeBuffer, NodeBufferLength, pServiceBuffer, ServiceBufferLength, Flags);
+
+            // the only use in Qt is simple reverse lookup
+            // implement it with gethostbyaddr
+            if (SockaddrLength == sizeof(sockaddr_in)) {
+                const sockaddr_in *addr = (const sockaddr_in *)pSockaddr;
+                hostent *host = gethostbyaddr((const char *)&addr->sin_addr, sizeof(in_addr), AF_INET);
+                if (!host)
+                    return WSANO_DATA;
+
+                if (pNodeBuffer && NodeBufferLength > 0) {
+                    strncpy(pNodeBuffer, host->h_name, NodeBufferLength);
+                    pNodeBuffer[NodeBufferLength - 1] = '\0';
+                }
+                if (pServiceBuffer && ServiceBufferLength > 0)
+                    pServiceBuffer[0] = '\0';
+                return 0;
+            } else if (SockaddrLength == sizeof(sockaddr_in6)) {
+                const sockaddr_in6 *addr = (const sockaddr_in6 *)pSockaddr;
+                hostent *host = gethostbyaddr((const char *)&addr->sin6_addr, sizeof(in6_addr), AF_INET6);
+                if (!host)
+                    return WSANO_DATA;
+
+                if (pNodeBuffer && NodeBufferLength > 0) {
+                    strncpy(pNodeBuffer, host->h_name, NodeBufferLength);
+                    pNodeBuffer[NodeBufferLength - 1] = '\0';
+                }
+                if (pServiceBuffer && ServiceBufferLength > 0)
+                    pServiceBuffer[0] = '\0';
+                return 0;
+            } else {
+                return WSAEFAULT;
+            }
+        }
+#endif
+    } // namespace Ws2_32
 } // namespace WinXPThunk
+
+#pragma GCC diagnostic warning "-Wcast-function-type"
+
+#ifndef _WIN64
+# define SystemFunction036 WinXPThunk::AdvApi32::RtlGenRandom
+#endif
 
 #define DwmEnableBlurBehindWindow WinXPThunk::DwmApi::DwmEnableBlurBehindWindow
 #define DwmGetWindowAttribute WinXPThunk::DwmApi::DwmGetWindowAttribute
@@ -830,12 +1224,37 @@ namespace WinXPThunk {
 #define GetAdaptersAddresses WinXPThunk::IpHlpApi::GetAdaptersAddresses
 
 #define CancelIoEx WinXPThunk::Kernel32::CancelIoEx
+#ifndef _WIN64
+# define CheckRemoteDebuggerPresent WinXPThunk::Kernel32::CheckRemoteDebuggerPresent
+#endif
 #define CompareStringEx WinXPThunk::Kernel32::CompareStringExW
 #define CreateNamedPipe WinXPThunk::Kernel32::CreateNamedPipeW
 #define GetFileInformationByHandleEx WinXPThunk::Kernel32::GetFileInformationByHandleEx
+#ifndef _WIN64
+# define GetGeoInfo WinXPThunk::Kernel32::GetGeoInfoW
+# define GetModuleHandleEx WinXPThunk::Kernel32::GetModuleHandleExW
+# define GetNativeSystemInfo WinXPThunk::Kernel32::GetNativeSystemInfo
+# define GetProcessId WinXPThunk::Kernel32::GetProcessId
+#endif
 #define GetTickCount64 WinXPThunk::Kernel32::GetTickCount64
+#ifndef _WIN64
+# define GetUserGeoID WinXPThunk::Kernel32::GetUserGeoID
+#endif
 #define GetUserPreferredUILanguages WinXPThunk::Kernel32::GetUserPreferredUILanguages
+#ifndef _WIN64
+# define GetVolumePathNamesForVolumeName WinXPThunk::Kernel32::GetVolumePathNamesForVolumeNameW
+#endif
 #define RaiseFailFastException WinXPThunk::Kernel32::RaiseFailFastException
+#ifndef _WIN64
+# define TzSpecificLocalTimeToSystemTime WinXPThunk::Kernel32::TzSpecificLocalTimeToSystemTime
+#endif
+#ifndef _WIN64
+# define WTSGetActiveConsoleSessionId WinXPThunk::Kernel32::WTSGetActiveConsoleSessionId
+#endif
+
+#ifndef _UCRT
+# define _wgetenv_s WinXPThunk::MSVCRT::_wgetenv_s
+#endif
 
 #define SHCreateItemFromIDList WinXPThunk::Shell32::SHCreateItemFromIDList
 #define SHCreateItemFromParsingName WinXPThunk::Shell32::SHCreateItemFromParsingName
@@ -854,5 +1273,11 @@ namespace WinXPThunk {
 #define UnregisterPowerSettingNotification WinXPThunk::User32::UnregisterPowerSettingNotification
 #define UnregisterTouchWindow WinXPThunk::User32::UnregisterTouchWindow
 #define UpdateLayeredWindowIndirect WinXPThunk::User32::UpdateLayeredWindowIndirect
+
+#ifndef _WIN64
+# define freeaddrinfo WinXPThunk::Ws2_32::freeaddrinfo
+# define getaddrinfo WinXPThunk::Ws2_32::getaddrinfo
+# define getnameinfo WinXPThunk::Ws2_32::getnameinfo
+#endif
 
 #endif // QT_WINDOWS_H

@@ -6,24 +6,36 @@ jobs:
   build:
     name: Build
     strategy:
+      fail-fast: false
       matrix:
-        arch: [32, 64]
+        profile:
+          - 64-ucrt
+          - 32-ucrt
+          - 64-msvcrt
+          - 32-msvcrt
+          - 32-win2000
+        include:
+          - { profile: 64-ucrt, arch: 64 }
+          - { profile: 32-ucrt, arch: 32 }
+          - { profile: 64-msvcrt, arch: 64 }
+          - { profile: 32-msvcrt, arch: 32 }
+          - { profile: 32-win2000, arch: 32 }
     runs-on: windows-2019
     defaults:
       run:
         shell: bash
     env:
       _QT_VERSION: "5.15.13"
-      _QT_NAME: mingw132_${{ matrix.arch }}-redpanda
-      _MINGW_LITE_RELEASE: "13.2.0-r4"
+      _QT_NAME: mingw132_${{ matrix.profile }}-redpanda
+      _MINGW_LITE_RELEASE: "13.2.0-r6"
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Setup toolchain
         run: |
-          curl -LO https://github.com/redpanda-cpp/mingw-lite/releases/download/$_MINGW_LITE_RELEASE/mingw${{ matrix.arch }}-ucrt-$_MINGW_LITE_RELEASE.7z
-          7z x mingw${{ matrix.arch }}-ucrt-$_MINGW_LITE_RELEASE.7z
+          curl -LO https://github.com/redpanda-cpp/mingw-lite/releases/download/$_MINGW_LITE_RELEASE/mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z
+          7z x mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z
 
       - name: Prepare source
         run: |
