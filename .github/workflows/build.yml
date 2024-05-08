@@ -9,12 +9,16 @@ jobs:
       fail-fast: false
       matrix:
         profile:
+          - 64-mcf
+          - 32-mcf
           - 64-ucrt
           - 32-ucrt
           - 64-msvcrt
           - 32-msvcrt
           - 32-win2000
         include:
+          - { profile: 64-mcf, arch: 64 }
+          - { profile: 32-mcf, arch: 32 }
           - { profile: 64-ucrt, arch: 64 }
           - { profile: 32-ucrt, arch: 32 }
           - { profile: 64-msvcrt, arch: 64 }
@@ -26,8 +30,8 @@ jobs:
         shell: bash
     env:
       _QT_VERSION: "5.15.13"
-      _QT_NAME: mingw132_${{ matrix.profile }}-redpanda
-      _MINGW_LITE_RELEASE: "13.2.0-r6"
+      _QT_NAME: mingw141_${{ matrix.profile }}-redpanda
+      _MINGW_LITE_RELEASE: "14.1.0-r0"
 
     steps:
       - uses: actions/checkout@v2
