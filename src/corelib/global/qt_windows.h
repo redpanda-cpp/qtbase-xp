@@ -164,6 +164,7 @@
 # undef GetGeoInfo
 # undef GetModuleHandleEx
 # undef GetVolumePathNamesForVolumeName
+# undef RegisterClassEx
 #endif
 #undef RtlGenRandom
 #undef Shell_NotifyIcon
@@ -994,6 +995,22 @@ namespace WinXPThunk {
             return FALSE;
         }
 
+        // Windows 2000
+        // behaviour changed in Windows XP
+#ifndef _WIN64
+        inline ATOM WINAPI RegisterClassExW(
+            _In_ const WNDCLASSEXW *unnamedParam1
+        ) {
+            if (IsWindowsXPOrGreater())
+                return ::RegisterClassExW(unnamedParam1);
+
+            // CS_DROPSHADOW is not supported on Windows 2000
+            WNDCLASSEXW param = *unnamedParam1;
+            param.style = unnamedParam1->style & ~CS_DROPSHADOW;
+            return ::RegisterClassExW(&param);
+        }
+#endif
+
         // Windows Vista
         inline HPOWERNOTIFY WINAPI RegisterPowerSettingNotification(
             _In_ HANDLE hRecipient,
@@ -1268,6 +1285,9 @@ namespace WinXPThunk {
 #define CloseTouchInputHandle WinXPThunk::User32::CloseTouchInputHandle
 #define GetTouchInputInfo WinXPThunk::User32::GetTouchInputInfo
 #define IsTouchWindow WinXPThunk::User32::IsTouchWindow
+#ifndef _WIN64
+# define RegisterClassEx WinXPThunk::User32::RegisterClassExW
+#endif
 #define RegisterPowerSettingNotification WinXPThunk::User32::RegisterPowerSettingNotification
 #define RegisterTouchWindow WinXPThunk::User32::RegisterTouchWindow
 #define UnregisterPowerSettingNotification WinXPThunk::User32::UnregisterPowerSettingNotification
