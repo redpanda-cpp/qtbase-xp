@@ -31,7 +31,7 @@ jobs:
     env:
       _QT_VERSION: "5.15.13"
       _QT_NAME: mingw141_${{ matrix.profile }}-redpanda
-      _MINGW_LITE_RELEASE: "14.1.0-r0"
+      _MINGW_LITE_RELEASE: "14.1.0-r1"
 
     steps:
       - uses: actions/checkout@v2
