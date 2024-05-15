@@ -477,7 +477,7 @@ namespace WinXPThunk {
         }
 
         // Windows Vista
-        inline BOOL GetFileInformationByHandleEx(
+        inline BOOL WINAPI GetFileInformationByHandleEx(
             _In_ HANDLE hFile,
             _In_ FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
             _Out_writes_bytes_(dwBufferSize) LPVOID lpFileInformation,
@@ -542,7 +542,7 @@ namespace WinXPThunk {
 
         // Windows XP
 #ifndef _WIN64
-        inline void GetNativeSystemInfo(
+        inline void WINAPI GetNativeSystemInfo(
             _Out_ LPSYSTEM_INFO lpSystemInfo
         ) {
             using type = decltype(&GetNativeSystemInfo);
@@ -583,7 +583,7 @@ namespace WinXPThunk {
 #endif
 
         // Windows Vista
-        inline ULONGLONG GetTickCount64() {
+        inline ULONGLONG WINAPI GetTickCount64() {
             using type = decltype(&GetTickCount64);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetTickCount64");
             if (real)
@@ -613,7 +613,7 @@ namespace WinXPThunk {
 #endif
 
         // Windows Vista
-        inline BOOL GetUserPreferredUILanguages(
+        inline BOOL WINAPI GetUserPreferredUILanguages(
             _In_ DWORD dwFlags,
             _Out_ PULONG pulNumLanguages,
             _Out_opt_ PZZWSTR pwszLanguagesBuffer,
