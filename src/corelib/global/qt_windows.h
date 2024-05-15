@@ -54,7 +54,7 @@
 #    define _WIN32_WINNT 0x601
 #  endif
 #  ifndef NTDDI_VERSION
-#    define NTDDI_VERSION 0x06000000
+#    define NTDDI_VERSION 0x06010000
 #  endif
 #endif
 
@@ -171,15 +171,28 @@
 
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 
+/* here we need to assign.
+ *
+ * `static_assert(std::is_same_v<type, decltype(&::name)>)`
+ * does not work because _wgetenv_s is overloaded and cannot be decltype-ed.
+ *
+ * non-dependent `if constexpr (false)` guarantees that the type is checked
+ * but the reference to the function does not exists in the binary.
+ */
+#define DECLARE_TYPE(name) \
+    using type = decltype(&name); \
+    if constexpr (false) \
+        [[maybe_unused]] type _ = &::name;
+
 namespace WinXPThunk {
     namespace AdvApi32 {
-        // Windows XP
+        // Windows XP, documented as RtlGenRandom
 #ifndef _WIN64
-        inline BOOLEAN WINAPI RtlGenRandom(
+        inline BOOLEAN WINAPI SystemFunction036(
             _Out_ PVOID RandomBuffer,
             _In_ ULONG RandomBufferLength
         ) {
-            using type = decltype(&RtlGenRandom);
+            DECLARE_TYPE(SystemFunction036);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"advapi32.dll"), "SystemFunction036");
             if (real)
                 return real(RandomBuffer, RandomBufferLength);
@@ -198,7 +211,7 @@ namespace WinXPThunk {
             _In_ HWND hWnd,
             _In_ const DWM_BLURBEHIND *pBlurBehind
         ) {
-            using type = decltype(&DwmEnableBlurBehindWindow);
+            DECLARE_TYPE(DwmEnableBlurBehindWindow);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"dwmapi.dll"), "DwmEnableBlurBehindWindow");
             if (real)
                 return real(hWnd, pBlurBehind);
@@ -213,7 +226,7 @@ namespace WinXPThunk {
             _Out_ PVOID pvAttribute,
             _In_ DWORD cbAttribute
         ) {
-            using type = decltype(&DwmGetWindowAttribute);
+            DECLARE_TYPE(DwmGetWindowAttribute);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"dwmapi.dll"), "DwmGetWindowAttribute");
             if (real)
                 return real(hwnd, dwAttribute, pvAttribute, cbAttribute);
@@ -227,7 +240,7 @@ namespace WinXPThunk {
         inline HRESULT WINAPI DwmIsCompositionEnabled(
             _Out_ BOOL *pfEnabled
         ) {
-            using type = decltype(&DwmIsCompositionEnabled);
+            DECLARE_TYPE(DwmIsCompositionEnabled);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"dwmapi.dll"), "DwmIsCompositionEnabled");
             if (real)
                 return real(pfEnabled);
@@ -248,7 +261,7 @@ namespace WinXPThunk {
             _In_ LPCVOID pvAttribute,
             _In_ DWORD cbAttribute
         ) {
-            using type = decltype(&DwmSetWindowAttribute);
+            DECLARE_TYPE(DwmSetWindowAttribute);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"dwmapi.dll"), "DwmSetWindowAttribute");
             if (real)
                 return real(hwnd, dwAttribute, pvAttribute, cbAttribute);
@@ -287,7 +300,7 @@ namespace WinXPThunk {
             _In_ NET_IFINDEX InterfaceIndex,
             _Out_ NET_LUID *InterfaceLuid
         ) {
-            using type = decltype(&ConvertInterfaceIndexToLuid);
+            DECLARE_TYPE(ConvertInterfaceIndexToLuid);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "ConvertInterfaceIndexToLuid");
             if (real)
                 return real(InterfaceIndex, InterfaceLuid);
@@ -310,7 +323,7 @@ namespace WinXPThunk {
             _In_ const NET_LUID *InterfaceLuid,
             _Out_ NET_IFINDEX *InterfaceIndex
         ) {
-            using type = decltype(&ConvertInterfaceLuidToIndex);
+            DECLARE_TYPE(ConvertInterfaceLuidToIndex);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "ConvertInterfaceLuidToIndex");
             if (real)
                 return real(InterfaceLuid, InterfaceIndex);
@@ -333,7 +346,7 @@ namespace WinXPThunk {
             _Out_ PWSTR InterfaceName,
             _In_ SIZE_T Length
         ) {
-            using type = decltype(&ConvertInterfaceLuidToNameW);
+            DECLARE_TYPE(ConvertInterfaceLuidToNameW);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "ConvertInterfaceLuidToNameW");
             if (real)
                 return real(InterfaceLuid, InterfaceName, Length);
@@ -357,7 +370,7 @@ namespace WinXPThunk {
             _In_ const WCHAR *InterfaceName,
             _Out_ NET_LUID *InterfaceLuid
         ) {
-            using type = decltype(&ConvertInterfaceNameToLuidW);
+            DECLARE_TYPE(ConvertInterfaceNameToLuidW);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "ConvertInterfaceNameToLuidW");
             if (real)
                 return real(InterfaceName, InterfaceLuid);
@@ -384,7 +397,7 @@ namespace WinXPThunk {
             _Inout_ IP_ADAPTER_ADDRESSES_LH *AdapterAddresses,
             _Inout_ PULONG SizePointer
         ) {
-            using type = decltype(&GetAdaptersAddresses);
+            DECLARE_TYPE(GetAdaptersAddresses);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "GetAdaptersAddresses");
             if (real && IsWindowsVistaOrGreater())
                 return real(Family, Flags, Reserved, AdapterAddresses, SizePointer);
@@ -412,7 +425,7 @@ namespace WinXPThunk {
             _In_ HANDLE hFile,
             _In_opt_ LPOVERLAPPED lpOverlapped
         ) {
-            using type = decltype(&CancelIoEx);
+            DECLARE_TYPE(CancelIoEx);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CancelIoEx");
             if (real)
                 return real(hFile, lpOverlapped);
@@ -426,7 +439,7 @@ namespace WinXPThunk {
             _In_ HANDLE hProcess,
             _Inout_ PBOOL pbDebuggerPresent
         ) {
-            using type = decltype(&CheckRemoteDebuggerPresent);
+            DECLARE_TYPE(CheckRemoteDebuggerPresent);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CheckRemoteDebuggerPresent");
             if (real)
                 return real(hProcess, pbDebuggerPresent);
@@ -437,7 +450,7 @@ namespace WinXPThunk {
 #endif
 
         // Windows Vista
-        inline int WINAPI CompareStringExW(
+        inline int WINAPI CompareStringEx(
             _In_opt_ LPCWSTR lpLocaleName,
             _In_ DWORD dwCmpFlags,
             _In_ LPCWSTR lpString1,
@@ -448,7 +461,7 @@ namespace WinXPThunk {
             _In_opt_ LPVOID lpReserved,
             _In_opt_ LPARAM lParam
         ) {
-            using type = decltype(&CompareStringExW);
+            DECLARE_TYPE(CompareStringEx);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CompareStringExW");
             if (real)
                 return real(lpLocaleName, dwCmpFlags, lpString1, cchCount1, lpString2, cchCount2, lpVersionInformation, lpReserved, lParam);
@@ -483,7 +496,7 @@ namespace WinXPThunk {
             _Out_writes_bytes_(dwBufferSize) LPVOID lpFileInformation,
             _In_ DWORD dwBufferSize
         ) {
-            using type = decltype(&GetFileInformationByHandleEx);
+            DECLARE_TYPE(GetFileInformationByHandleEx);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetFileInformationByHandleEx");
             if (real)
                 return real(hFile, FileInformationClass, lpFileInformation, dwBufferSize);
@@ -503,7 +516,7 @@ namespace WinXPThunk {
             _In_ int cchData,
             _In_ LANGID LangId
         ) {
-            using type = decltype(&GetGeoInfoW);
+            DECLARE_TYPE(GetGeoInfoW);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetGeoInfoW");
             if (real)
                 return real(Location, GeoType, lpGeoData, cchData, LangId);
@@ -528,7 +541,7 @@ namespace WinXPThunk {
             _In_opt_ LPCWSTR lpModuleName,
             _Out_ HMODULE *phModule
         ) {
-            using type = decltype(&GetModuleHandleExW);
+            DECLARE_TYPE(GetModuleHandleExW);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetModuleHandleExW");
             if (real)
                 return real(dwFlags, lpModuleName, phModule);
@@ -545,7 +558,7 @@ namespace WinXPThunk {
         inline void WINAPI GetNativeSystemInfo(
             _Out_ LPSYSTEM_INFO lpSystemInfo
         ) {
-            using type = decltype(&GetNativeSystemInfo);
+            DECLARE_TYPE(GetNativeSystemInfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetNativeSystemInfo");
             if (real)
                 return real(lpSystemInfo);
@@ -559,7 +572,7 @@ namespace WinXPThunk {
         inline DWORD WINAPI GetProcessId(
             _In_ HANDLE Process
         ) {
-            using type = decltype(&GetProcessId);
+            DECLARE_TYPE(GetProcessId);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetProcessId");
             if (real)
                 return real(Process);
@@ -584,7 +597,7 @@ namespace WinXPThunk {
 
         // Windows Vista
         inline ULONGLONG WINAPI GetTickCount64() {
-            using type = decltype(&GetTickCount64);
+            DECLARE_TYPE(GetTickCount64);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetTickCount64");
             if (real)
                 return real();
@@ -597,7 +610,7 @@ namespace WinXPThunk {
         inline GEOID WINAPI GetUserGeoID(
             _In_ GEOCLASS GeoClass
         ) {
-            using type = decltype(&GetUserGeoID);
+            DECLARE_TYPE(GetUserGeoID);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetUserGeoID");
             if (real)
                 return real(GeoClass);
@@ -619,7 +632,7 @@ namespace WinXPThunk {
             _Out_opt_ PZZWSTR pwszLanguagesBuffer,
             _Inout_ PULONG pcchLanguagesBuffer
         ) {
-            using type = decltype(&GetUserPreferredUILanguages);
+            DECLARE_TYPE(GetUserPreferredUILanguages);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetUserPreferredUILanguages");
             if (real)
                 return real(dwFlags, pulNumLanguages, pwszLanguagesBuffer, pcchLanguagesBuffer);
@@ -681,7 +694,7 @@ namespace WinXPThunk {
             _In_ DWORD cchBufferLength,
             _Out_ PDWORD lpcchReturnLength
         ) {
-            using type = decltype(&GetVolumePathNamesForVolumeNameW);
+            DECLARE_TYPE(GetVolumePathNamesForVolumeNameW);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "GetVolumePathNamesForVolumeNameW");
             if (real)
                 return real(lpszVolumeName, lpszVolumePathNames, cchBufferLength, lpcchReturnLength);
@@ -699,7 +712,7 @@ namespace WinXPThunk {
             _In_opt_ PCONTEXT pContextRecord,
             _In_ DWORD dwFlags
         ) {
-            using type = decltype(&RaiseFailFastException);
+            DECLARE_TYPE(RaiseFailFastException);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "RaiseFailFastException");
             if (real)
                 return real(pExceptionRecord, pContextRecord, dwFlags);
@@ -714,7 +727,7 @@ namespace WinXPThunk {
             _In_ const SYSTEMTIME *lpLocalTime,
             _Out_ LPSYSTEMTIME lpUniversalTime
         ) {
-            using type = decltype(&TzSpecificLocalTimeToSystemTime);
+            DECLARE_TYPE(TzSpecificLocalTimeToSystemTime);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "TzSpecificLocalTimeToSystemTime");
             if (real)
                 return real(lpTimeZoneInformation, lpLocalTime, lpUniversalTime);
@@ -734,7 +747,7 @@ namespace WinXPThunk {
 #ifndef _WIN64
         inline DWORD WINAPI WTSGetActiveConsoleSessionId()
         {
-            using type = decltype(&WTSGetActiveConsoleSessionId);
+            DECLARE_TYPE(WTSGetActiveConsoleSessionId);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "WTSGetActiveConsoleSessionId");
             if (real)
                 return real();
@@ -753,7 +766,7 @@ namespace WinXPThunk {
             size_t numberOfElements,
             const wchar_t *varname
         ) {
-            using type = decltype(&_wgetenv_s);
+            DECLARE_TYPE(_wgetenv_s);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"msvcrt.dll"), "_wgetenv_s");
             if (real)
                 return real(pReturnValue, buffer, numberOfElements, varname);
@@ -816,7 +829,7 @@ namespace WinXPThunk {
             _In_ REFIID riid,
             _Out_ void **ppv
         ) {
-            using type = decltype(&SHCreateItemFromIDList);
+            DECLARE_TYPE(SHCreateItemFromIDList);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHCreateItemFromIDList");
             if (real)
                 return real(pidl, riid, ppv);
@@ -833,7 +846,7 @@ namespace WinXPThunk {
             _In_ REFIID riid,
             _Out_ void **ppv
         ) {
-            using type = decltype(&SHCreateItemFromParsingName);
+            DECLARE_TYPE(SHCreateItemFromParsingName);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHCreateItemFromParsingName");
             if (real)
                 return real(pszPath, pbc, riid, ppv);
@@ -852,7 +865,7 @@ namespace WinXPThunk {
             _In_opt_ HANDLE hToken,
             _Out_ PIDLIST_ABSOLUTE *ppidl
         ) {
-            using type = decltype(&SHGetKnownFolderIDList);
+            DECLARE_TYPE(SHGetKnownFolderIDList);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHGetKnownFolderIDList");
             if (real)
                 return real(rfid, dwFlags, hToken, ppidl);
@@ -869,7 +882,7 @@ namespace WinXPThunk {
             _In_opt_ HANDLE hToken,
             _Outptr_ PWSTR *ppszPath
         ) {
-            using type = decltype(&SHGetKnownFolderPath);
+            DECLARE_TYPE(SHGetKnownFolderPath);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHGetKnownFolderPath");
             if (real)
                 return real(rfid, dwFlags, hToken, ppszPath);
@@ -903,7 +916,7 @@ namespace WinXPThunk {
             _In_ UINT uFlags,
             _Inout_ SHSTOCKICONINFO *psii
         ) {
-            using type = decltype(&SHGetStockIconInfo);
+            DECLARE_TYPE(SHGetStockIconInfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHGetStockIconInfo");
             if (real)
                 return real(siid, uFlags, psii);
@@ -924,7 +937,7 @@ namespace WinXPThunk {
             _In_ const NOTIFYICONIDENTIFIER *identifier,
             _Out_ RECT *iconLocation
         ) {
-            using type = decltype(&Shell_NotifyIconGetRect);
+            DECLARE_TYPE(Shell_NotifyIconGetRect);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"shell32.dll"), "Shell_NotifyIconGetRect");
             if (real)
                 return real(identifier, iconLocation);
@@ -941,7 +954,7 @@ namespace WinXPThunk {
             _In_ DWORD action,
             _Inout_opt_ PCHANGEFILTERSTRUCT pChangeFilterStruct
         ) {
-            using type = decltype(&ChangeWindowMessageFilterEx);
+            DECLARE_TYPE(ChangeWindowMessageFilterEx);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "ChangeWindowMessageFilterEx");
             if (real)
                 return real(hWnd, message, action, pChangeFilterStruct);
@@ -955,7 +968,7 @@ namespace WinXPThunk {
         inline BOOL WINAPI CloseTouchInputHandle(
             _In_ HTOUCHINPUT hTouchInput
         ) {
-            using type = decltype(&CloseTouchInputHandle);
+            DECLARE_TYPE(CloseTouchInputHandle);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "CloseTouchInputHandle");
             if (real)
                 return real(hTouchInput);
@@ -971,7 +984,7 @@ namespace WinXPThunk {
             _Out_ PTOUCHINPUT pInputs,
             _In_ int cbSize
         ) {
-            using type = decltype(&GetTouchInputInfo);
+            DECLARE_TYPE(GetTouchInputInfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetTouchInputInfo");
             if (real)
                 return real(hTouchInput, cInputs, pInputs, cbSize);
@@ -985,7 +998,7 @@ namespace WinXPThunk {
             _In_ HWND hwnd,
             _Out_opt_ PULONG pulFlags
         ) {
-            using type = decltype(&IsTouchWindow);
+            DECLARE_TYPE(IsTouchWindow);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "IsTouchWindow");
             if (real)
                 return real(hwnd, pulFlags);
@@ -1017,7 +1030,7 @@ namespace WinXPThunk {
             _In_ LPCGUID PowerSettingGuid,
             _In_ DWORD Flags
         ) {
-            using type = decltype(&RegisterPowerSettingNotification);
+            DECLARE_TYPE(RegisterPowerSettingNotification);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "RegisterPowerSettingNotification");
             if (real)
                 return real(hRecipient, PowerSettingGuid, Flags);
@@ -1030,7 +1043,7 @@ namespace WinXPThunk {
             _In_ HWND hwnd,
             _In_ ULONG ulFlags
         ) {
-            using type = decltype(&RegisterTouchWindow);
+            DECLARE_TYPE(RegisterTouchWindow);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "RegisterTouchWindow");
             if (real)
                 return real(hwnd, ulFlags);
@@ -1042,7 +1055,7 @@ namespace WinXPThunk {
         inline BOOL WINAPI UnregisterPowerSettingNotification(
             _In_ HPOWERNOTIFY Handle
         ) {
-            using type = decltype(&UnregisterPowerSettingNotification);
+            DECLARE_TYPE(UnregisterPowerSettingNotification);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "UnregisterPowerSettingNotification");
             if (real)
                 return real(Handle);
@@ -1056,7 +1069,7 @@ namespace WinXPThunk {
         inline BOOL WINAPI UnregisterTouchWindow(
             _In_ HWND hWnd
         ) {
-            using type = decltype(&UnregisterTouchWindow);
+            DECLARE_TYPE(UnregisterTouchWindow);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "UnregisterTouchWindow");
             if (real)
                 return real(hWnd);
@@ -1069,7 +1082,7 @@ namespace WinXPThunk {
             _In_ HWND hwnd,
             _In_ const UPDATELAYEREDWINDOWINFO *pULWInfo
         ) {
-            using type = decltype(&UpdateLayeredWindowIndirect);
+            DECLARE_TYPE(UpdateLayeredWindowIndirect);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"user32.dll"), "UpdateLayeredWindowIndirect");
             if (real)
                 return real(hwnd, pULWInfo);
@@ -1084,7 +1097,7 @@ namespace WinXPThunk {
         inline void WSAAPI freeaddrinfo(
             _In_ PADDRINFOA pAddrInfo
         ) {
-            using type = decltype(&freeaddrinfo);
+            DECLARE_TYPE(freeaddrinfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "freeaddrinfo");
             if (real)
                 return real(pAddrInfo);
@@ -1147,7 +1160,7 @@ namespace WinXPThunk {
             _In_opt_ const ADDRINFOA *pHints,
             _Out_ PADDRINFOA *ppResult
         ) {
-            using type = decltype(&getaddrinfo);
+            DECLARE_TYPE(getaddrinfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "getaddrinfo");
             if (real)
                 return real(pNodeName, pServiceName, pHints, ppResult);
@@ -1182,7 +1195,7 @@ namespace WinXPThunk {
             _In_ DWORD ServiceBufferLength,
             _In_ INT Flags
         ) {
-            using type = decltype(&getnameinfo);
+            DECLARE_TYPE(getnameinfo);
             static type real = (type)GetProcAddress(GetModuleHandleW(L"ws2_32.dll"), "getnameinfo");
             if (real)
                 return real(pSockaddr, SockaddrLength, pNodeBuffer, NodeBufferLength, pServiceBuffer, ServiceBufferLength, Flags);
@@ -1226,7 +1239,7 @@ namespace WinXPThunk {
 #pragma GCC diagnostic warning "-Wcast-function-type"
 
 #ifndef _WIN64
-# define SystemFunction036 WinXPThunk::AdvApi32::RtlGenRandom
+# define SystemFunction036 WinXPThunk::AdvApi32::SystemFunction036
 #endif
 
 #define DwmEnableBlurBehindWindow WinXPThunk::DwmApi::DwmEnableBlurBehindWindow
@@ -1244,7 +1257,7 @@ namespace WinXPThunk {
 #ifndef _WIN64
 # define CheckRemoteDebuggerPresent WinXPThunk::Kernel32::CheckRemoteDebuggerPresent
 #endif
-#define CompareStringEx WinXPThunk::Kernel32::CompareStringExW
+#define CompareStringEx WinXPThunk::Kernel32::CompareStringEx
 #define CreateNamedPipe WinXPThunk::Kernel32::CreateNamedPipeW
 #define GetFileInformationByHandleEx WinXPThunk::Kernel32::GetFileInformationByHandleEx
 #ifndef _WIN64
