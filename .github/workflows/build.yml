@@ -30,28 +30,31 @@ jobs:
         shell: bash
     env:
       _QT_VERSION: "5.15.13"
-      _QT_NAME: mingw141_${{ matrix.profile }}-redpanda
-      _MINGW_LITE_RELEASE: "14.1.0-r1"
+      _REDPANDA_QT_RELEASE: "5.15.13+redpanda1"
+      _QT_NAME: mingw141_${{ matrix.profile }}
+      _MINGW_LITE_RELEASE: "14.1.0-r2"
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Setup toolchain
         run: |
-          curl -LO https://github.com/redpanda-cpp/mingw-lite/releases/download/$_MINGW_LITE_RELEASE/mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z
-          7z x mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z
+          curl -LO "https://github.com/redpanda-cpp/mingw-lite/releases/download/$_MINGW_LITE_RELEASE/mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z"
+          7z x "mingw${{ matrix.profile }}-$_MINGW_LITE_RELEASE.7z"
+          mkdir -p "/c/Qt/$_REDPANDA_QT_RELEASE"
+          mv "mingw${{ matrix.arch }}" "/c/Qt/$_REDPANDA_QT_RELEASE/$_QT_NAME"
 
       - name: Prepare source
         run: |
-          git clone https://github.com/qt/qtsvg.git --branch=v$_QT_VERSION-lts-lgpl --depth=1
-          git clone https://github.com/qt/qttools.git --branch=v$_QT_VERSION-lts-lgpl --depth=1
+          git clone https://github.com/qt/qtsvg.git --branch="v$_QT_VERSION-lts-lgpl" --depth=1
+          git clone https://github.com/qt/qttools.git --branch="v$_QT_VERSION-lts-lgpl" --depth=1
 
       - name: Build
         run: |
-          export PATH="/c/Qt/$_QT_VERSION/$_QT_NAME/bin:$PWD/mingw${{ matrix.arch }}/bin:$PATH"
+          export PATH="/c/Qt/$_REDPANDA_QT_RELEASE/$_QT_NAME/bin:$PATH"
 
           ./configure.bat \
-            -prefix /c/Qt/$_QT_VERSION/$_QT_NAME -release \
+            -prefix "/c/Qt/$_REDPANDA_QT_RELEASE/$_QT_NAME" -release \
             -opensource -confirm-license \
             -release -optimize-size -static -static-runtime -platform win32-g++ \
             -opengl desktop -no-angle -no-icu -qt-zlib -qt-pcre -qt-libpng -qt-libjpeg -qt-freetype -no-fontconfig -qt-harfbuzz -no-ssl -no-openssl \
@@ -76,12 +79,12 @@ jobs:
           }
           popd
 
-          7z a -t7z -mx=9 -ms=on -mqs=on -mf=BCJ2 -m0=LZMA2:d=64m:fb=273:c=256m $_QT_NAME.7z /c/Qt/$_QT_VERSION
+          7z a -t7z -mx=9 -ms=on -mqs=on -mf=BCJ2 -m0=LZMA2:d=64m:fb=273:c=256m "$_QT_NAME.7z" "/c/Qt/$_REDPANDA_QT_RELEASE"
 
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
-          name: Qt ${{ env._QT_VERSION }} - ${{ env._QT_NAME }}
+          name: Qt ${{ env._REDPANDA_QT_RELEASE }} - ${{ env._QT_NAME }}
           path: ${{ env._QT_NAME }}.7z
 
       - name: Release
