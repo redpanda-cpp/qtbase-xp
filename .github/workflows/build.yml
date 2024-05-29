@@ -29,8 +29,8 @@ jobs:
       run:
         shell: bash
     env:
-      _QT_VERSION: "5.15.13"
-      _REDPANDA_QT_RELEASE: "5.15.13+redpanda1"
+      _QT_VERSION: "5.15.14"
+      _REDPANDA_QT_RELEASE: "5.15.14+redpanda0"
       _QT_NAME: mingw141_${{ matrix.profile }}
       _MINGW_LITE_RELEASE: "14.1.0-r2"
 
