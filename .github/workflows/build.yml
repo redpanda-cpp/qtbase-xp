@@ -15,7 +15,6 @@ jobs:
           - 32-ucrt
           - 64-msvcrt
           - 32-msvcrt
-          - 32-win2000
         include:
           - { profile: 64-mcf, arch: 64 }
           - { profile: 32-mcf, arch: 32 }
@@ -23,16 +22,15 @@ jobs:
           - { profile: 32-ucrt, arch: 32 }
           - { profile: 64-msvcrt, arch: 64 }
           - { profile: 32-msvcrt, arch: 32 }
-          - { profile: 32-win2000, arch: 32 }
     runs-on: windows-2019
     defaults:
       run:
         shell: bash
     env:
-      _QT_VERSION: "5.15.14"
-      _REDPANDA_QT_RELEASE: "5.15.14+redpanda0"
-      _QT_NAME: mingw141_${{ matrix.profile }}
-      _MINGW_LITE_RELEASE: "14.1.0-r2"
+      _QT_VERSION: "5.15.15"
+      _REDPANDA_QT_RELEASE: "5.15.15+redpanda0"
+      _QT_NAME: mingw142_${{ matrix.profile }}
+      _MINGW_LITE_RELEASE: "14.2.0-r3"
 
     steps:
       - uses: actions/checkout@v2
