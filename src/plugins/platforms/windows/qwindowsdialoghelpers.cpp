@@ -2047,7 +2047,7 @@ QPlatformDialogHelper *createHelper(QPlatformTheme::DialogType type)
     switch (type) {
     case QPlatformTheme::FileDialog:
         if (QWindowsIntegration::instance()->options() & QWindowsIntegration::XpNativeDialogs
-            || QSysInfo::windowsVersion() < QSysInfo::WV_VISTA)
+            || QOperatingSystemVersion::current().majorVersion() < 6 /* pre Vista */)
             return new QWindowsXpFileDialogHelper();
         return new QWindowsFileDialogHelper;
     case QPlatformTheme::ColorDialog:
