@@ -341,3 +341,4 @@ CMakeUserPresets.json
 # redpanda-cpp: CI files
 assets
 build
+pkg

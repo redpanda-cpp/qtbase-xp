@@ -570,6 +570,7 @@ qt_internal_extend_target(Core CONDITION WIN32
         authz
         kernel32
         netapi32
+        ntdll
         ole32
         shell32
         user32

@@ -116,16 +116,6 @@
 #include <winternl.h>
 #include <ws2tcpip.h>
 
-#undef CreateNamedPipe
-#ifndef _WIN64
-# undef GetGeoInfo
-# undef GetModuleHandleEx
-# undef GetVolumePathNamesForVolumeName
-# undef RegisterClassEx
-#endif
-#undef RtlGenRandom
-#undef Shell_NotifyIcon
-
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 
 #if !defined(_WIN64)
@@ -471,8 +461,12 @@ namespace Win32Thunk_5_1
     }
 }
 
+#undef RtlGenRandom
 #define SystemFunction036 Win32Thunk_5_1::AdvApi32::SystemFunction036
 
+#undef GetGeoInfo
+#undef GetModuleHandleEx
+#undef GetVolumePathNamesForVolumeName
 #define CheckRemoteDebuggerPresent      Win32Thunk_5_1::Kernel32::CheckRemoteDebuggerPresent
 #define GetGeoInfo                      Win32Thunk_5_1::Kernel32::GetGeoInfoW
 #define GetModuleHandleEx               Win32Thunk_5_1::Kernel32::GetModuleHandleExW
@@ -483,15 +477,17 @@ namespace Win32Thunk_5_1
 #define TzSpecificLocalTimeToSystemTime Win32Thunk_5_1::Kernel32::TzSpecificLocalTimeToSystemTime
 #define WTSGetActiveConsoleSessionId    Win32Thunk_5_1::Kernel32::WTSGetActiveConsoleSessionId
 
+#undef SHDefExtractIcon
 #define SHDefExtractIcon Win32Thunk_5_1::Shell32::SHDefExtractIconW
 
+#undef RegisterClassEx
 #define RegisterClassEx Win32Thunk_5_1::User32::RegisterClassExW
 
 #define freeaddrinfo Win32Thunk_5_1::Ws2_32::freeaddrinfo
 #define getaddrinfo  Win32Thunk_5_1::Ws2_32::getaddrinfo
 #define getnameinfo  Win32Thunk_5_1::Ws2_32::getnameinfo
 
-#endif
+#endif // _WIN64
 
 #if !defined(__aarch64)
 
@@ -1070,6 +1066,7 @@ namespace Win32Thunk_6_0
 #define ConvertInterfaceNameToLuidW Win32Thunk_6_0::IpHlpApi::ConvertInterfaceNameToLuidW
 #define GetAdaptersAddresses        Win32Thunk_6_0::IpHlpApi::GetAdaptersAddresses
 
+#undef CreateNamedPipe
 #define CancelIoEx                   Win32Thunk_6_0::Kernel32::CancelIoEx
 #define CompareStringEx              Win32Thunk_6_0::Kernel32::CompareStringEx
 #define CreateNamedPipe              Win32Thunk_6_0::Kernel32::CreateNamedPipeW
@@ -1216,8 +1213,8 @@ namespace Win32Thunk_6_1
 #define CloseTouchInputHandle       Win32Thunk_6_1::User32::CloseTouchInputHandle
 #define GetTouchInputInfo           Win32Thunk_6_1::User32::GetTouchInputInfo
 #define IsTouchWindow               Win32Thunk_6_1::User32::IsTouchWindow
-#define RegisterTouchWindow WinXPThunk::User32::RegisterTouchWindow
-#define UnregisterTouchWindow WinXPThunk::User32::UnregisterTouchWindow
+#define RegisterTouchWindow         Win32Thunk_6_1::User32::RegisterTouchWindow
+#define UnregisterTouchWindow       Win32Thunk_6_1::User32::UnregisterTouchWindow
 
 namespace Win32Thunk_6_2
 {}
@@ -1228,7 +1225,7 @@ namespace Win32Thunk_6_3
 namespace Win32Thunk_10_0
 {}
 
-#endif
+#endif // __aarch64
 
 #pragma GCC diagnostic warning "-Wcast-function-type"
 
