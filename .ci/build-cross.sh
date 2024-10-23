@@ -181,7 +181,6 @@ function build_target_qtsvg() {
 function build_target_qttools() {
   build_dir="$_BUILD_DIR/qttools-target"
   pushd "$build_dir"
-  bash
   qt-configure-module "$_PROJECT_ROOT/assets/qttools-$_QT_BRANCH" \
     -no-feature-assistant
   cmake --build . --parallel

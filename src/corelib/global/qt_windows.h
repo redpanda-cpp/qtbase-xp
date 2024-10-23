@@ -103,16 +103,23 @@
 
 #include <map>
 
+#include <d3d11.h>
+#include <d3d12.h>
+#include <d3d9.h>
 #include <dwmapi.h>
+#include <dwrite.h>
+#include <dxgi1_3.h>
 #include <iphlpapi.h>
 #include <namedpipeapi.h>
 #include <netioapi.h>
 #include <ntsecapi.h>
 #include <ntstatus.h>
 #include <knownfolders.h>
+#include <roapi.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <versionhelpers.h>
+#include <winstring.h>
 #include <winternl.h>
 #include <ws2tcpip.h>
 
@@ -138,6 +145,25 @@ namespace Win32Thunk_5_1
             // simply fail, Qt will handle it
             SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
             return FALSE;
+        }
+    }
+
+    namespace D3D9
+    {
+        inline IDirect3D9 *Direct3DCreate9(
+            UINT SDKVersion
+        ) {
+            using type = decltype(&::Direct3DCreate9);
+            static HMODULE module = LoadLibraryW(L"d3d9.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "Direct3DCreate9");
+                if (real)
+                    return real(SDKVersion);
+            }
+
+            // the only use is detecting opengl GPU
+            // simply fail
+            return nullptr;
         }
     }
 
@@ -463,6 +489,8 @@ namespace Win32Thunk_5_1
 
 #undef RtlGenRandom
 #define SystemFunction036 Win32Thunk_5_1::AdvApi32::SystemFunction036
+
+#define Direct3DCreate9 Win32Thunk_5_1::D3D9::Direct3DCreate9
 
 #undef GetGeoInfo
 #undef GetModuleHandleEx
@@ -1090,6 +1118,55 @@ namespace Win32Thunk_6_0
 
 namespace Win32Thunk_6_1
 {
+    namespace D3D11
+    {
+        inline HRESULT D3D11CreateDevice(
+            _In_opt_ IDXGIAdapter *pAdapter,
+            D3D_DRIVER_TYPE DriverType,
+            HMODULE Software,
+            UINT Flags,
+            _In_opt_ const D3D_FEATURE_LEVEL *pFeatureLevels,
+            UINT FeatureLevels,
+            UINT SDKVersion,
+            _Out_opt_ ID3D11Device **ppDevice,
+            _Out_opt_ D3D_FEATURE_LEVEL *pFeatureLevel,
+            _Out_opt_ ID3D11DeviceContext **ppImmediateContext
+        ) {
+            using type = decltype(&::D3D11CreateDevice);
+            static HMODULE module = LoadLibraryW(L"d3d11.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "D3D11CreateDevice");
+                if (real)
+                    return real(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+            }
+
+            // the only usage is rhi creating device
+            // simply fail
+            return E_NOTIMPL;
+        }
+    }
+
+    namespace Dwrite
+    {
+        inline HRESULT DWriteCreateFactory(
+            _In_ DWRITE_FACTORY_TYPE factoryType,
+            _In_ REFIID iid,
+            _Out_ IUnknown **factory
+        ) {
+            using type = decltype(&::DWriteCreateFactory);
+            static HMODULE module = LoadLibraryW(L"dwrite.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "DWriteCreateFactory");
+                if (real)
+                    return real(factoryType, iid, factory);
+            }
+
+            // the only usage is rhi creating device
+            // simply fail
+            return E_NOTIMPL;
+        }
+    }
+
     namespace Kernel32
     {
         inline void RaiseFailFastException(
@@ -1205,6 +1282,10 @@ namespace Win32Thunk_6_1
     }
 }
 
+#define D3D11CreateDevice Win32Thunk_6_1::D3D11::D3D11CreateDevice
+
+#define DWriteCreateFactory Win32Thunk_6_1::Dwrite::DWriteCreateFactory
+
 #define RaiseFailFastException Win32Thunk_6_1::Kernel32::RaiseFailFastException
 
 #define Shell_NotifyIconGetRect Win32Thunk_6_1::Shell32::Shell_NotifyIconGetRect
@@ -1217,13 +1298,140 @@ namespace Win32Thunk_6_1
 #define UnregisterTouchWindow       Win32Thunk_6_1::User32::UnregisterTouchWindow
 
 namespace Win32Thunk_6_2
-{}
+{
+    namespace Combase
+    {
+        inline HRESULT RoGetActivationFactory(
+            _In_ HSTRING activatableClassId,
+            _In_ REFIID iid,
+            _Out_ void **factory
+        ) {
+            using type = decltype(&::RoGetActivationFactory);
+            static HMODULE module = LoadLibraryW(L"combase.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(GetModuleHandleW(L"combase.dll"), "RoGetActivationFactory");
+                if (real)
+                    return real(activatableClassId, iid, factory);
+            }
+
+            // the only usage is to detect tablet mode
+            // simply fail
+            return E_NOTIMPL;
+        }
+
+        inline HRESULT WindowsCreateStringReference(
+            PCWSTR sourceString,
+            UINT32 length,
+            HSTRING_HEADER *hstringHeader,
+            HSTRING *string
+        ) {
+            using type = decltype(&::WindowsCreateStringReference);
+            static HMODULE module = LoadLibraryW(L"combase.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "WindowsCreateStringReference");
+                if (real)
+                    return real(sourceString, length, hstringHeader, string);
+            }
+
+            // the only usage is to detect tablet mode
+            // simply fail
+            return E_NOTIMPL;
+        }
+    }
+}
+
+#define RoGetActivationFactory       Win32Thunk_6_2::Combase::RoGetActivationFactory
+#define WindowsCreateStringReference Win32Thunk_6_2::Combase::WindowsCreateStringReference
 
 namespace Win32Thunk_6_3
-{}
+{
+    namespace Dxgi
+    {
+        inline HRESULT CreateDXGIFactory2(
+            UINT Flags,
+            REFIID riid,
+            _Out_ void **ppFactory
+        ) {
+            using type = decltype(&::CreateDXGIFactory2);
+            static HMODULE module = LoadLibraryW(L"dxgi.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "CreateDXGIFactory2");
+                if (real)
+                    return real(Flags, riid, ppFactory);
+            }
+
+            // the only usage is rhi creating device
+            // simply fail
+            return E_NOTIMPL;
+        }
+    }
+}
+
+#define CreateDXGIFactory2 Win32Thunk_6_3::Dxgi::CreateDXGIFactory2
 
 namespace Win32Thunk_10_0
-{}
+{
+    namespace D3D12
+    {
+        inline HRESULT D3D12CreateDevice(
+            _In_opt_ IUnknown *pAdapter,
+            D3D_FEATURE_LEVEL MinimumFeatureLevel,
+            _In_ REFIID riid,
+            _Out_opt_ void **ppDevice
+        ) {
+            using type = decltype(&::D3D12CreateDevice);
+            static HMODULE module = LoadLibraryW(L"d3d12.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "D3D12CreateDevice");
+                if (real)
+                    return real(pAdapter, MinimumFeatureLevel, riid, ppDevice);
+            }
+
+            // the only usage is rhi creating device
+            // simply fail
+            return E_NOTIMPL;
+        }
+
+        inline HRESULT D3D12GetDebugInterface(
+            _In_ REFIID riid,
+            _Out_opt_ void **ppvDebug
+        ) {
+            using type = decltype(&::D3D12GetDebugInterface);
+            static HMODULE module = LoadLibraryW(L"d3d12.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "D3D12GetDebugInterface");
+                if (real)
+                    return real(riid, ppvDebug);
+            }
+
+            // guarded by `D3D12CreateDevice`
+            // simply fail
+            return E_NOTIMPL;
+        }
+
+        inline HRESULT D3D12SerializeVersionedRootSignature(
+            _In_ const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *pRootSignatureDesc,
+            _Out_ ID3DBlob **ppBlob,
+            _Out_opt_ ID3DBlob **ppErrorBlob
+        ) {
+            using type = decltype(&::D3D12SerializeVersionedRootSignature);
+            static HMODULE module = LoadLibraryW(L"d3d12.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "D3D12SerializeVersionedRootSignature");
+                if (real)
+                    return real(pRootSignatureDesc, ppBlob, ppErrorBlob);
+            }
+
+            // guarded by `D3D12CreateDevice`
+            // simply fail
+            return E_NOTIMPL;
+        }
+    }
+}
+
+#define D3D12CreateDevice                    Win32Thunk_10_0::D3D12::D3D12CreateDevice
+#define D3D12GetDebugInterface               Win32Thunk_10_0::D3D12::D3D12GetDebugInterface
+#define D3D12SerializeVersionedRootSignature Win32Thunk_10_0::D3D12::D3D12SerializeVersionedRootSignature
 
 #endif // __aarch64
 
