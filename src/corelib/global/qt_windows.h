@@ -633,6 +633,20 @@ namespace Win32Thunk_6_0
             return ERROR_NOT_FOUND;
         }
 
+        inline NETIO_STATUS ConvertInterfaceLuidToGuid(
+            _In_ const NET_LUID *InterfaceLuid,
+            _Out_ GUID *InterfaceGuid
+        ) {
+            using type = decltype(&::ConvertInterfaceLuidToGuid);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"iphlpapi.dll"), "ConvertInterfaceLuidToGuid");
+            if (real)
+                return real(InterfaceLuid, InterfaceGuid);
+
+            // the only use is in network connection / status monitor
+            // simply fail
+            return ERROR_CALL_NOT_IMPLEMENTED;
+        }
+
         inline NETIO_STATUS ConvertInterfaceLuidToIndex(
             _In_ const NET_LUID *InterfaceLuid,
             _Out_ NET_IFINDEX *InterfaceIndex
@@ -736,6 +750,32 @@ namespace Win32Thunk_6_0
                 { 0x0416, L"pt-BR" },
                 { 0x0804, L"zh-CN" },
             };
+        }
+
+        inline void AcquireSRWLockExclusive(
+            _Inout_ PSRWLOCK SRWLock
+        ) {
+            using type = decltype(&::AcquireSRWLockExclusive);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "AcquireSRWLockExclusive");
+            if (real)
+                return real(SRWLock);
+
+            // the only use is d3d12 / vulkan memory allocation
+            // do nothing
+            return;
+        }
+
+        inline void AcquireSRWLockShared(
+            _Inout_ PSRWLOCK SRWLock
+        ) {
+            using type = decltype(&::AcquireSRWLockShared);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "AcquireSRWLockShared");
+            if (real)
+                return real(SRWLock);
+
+            // the only use is d3d12 / vulkan memory allocation
+            // do nothing
+            return;
         }
 
         inline BOOL CancelIoEx(
@@ -872,6 +912,32 @@ namespace Win32Thunk_6_0
                 pwszLanguagesBuffer[length + 1] = L'\0';  // double null-terminated
                 return TRUE;
             }
+        }
+
+        inline void ReleaseSRWLockExclusive(
+            _Inout_ PSRWLOCK SRWLock
+        ) {
+            using type = decltype(&::ReleaseSRWLockExclusive);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "ReleaseSRWLockExclusive");
+            if (real)
+                return real(SRWLock);
+
+            // the only use is d3d12 / vulkan memory allocation
+            // do nothing
+            return;
+        }
+
+        inline void ReleaseSRWLockShared(
+            _Inout_ PSRWLOCK SRWLock
+        ) {
+            using type = decltype(&::ReleaseSRWLockShared);
+            static type real = (type)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "ReleaseSRWLockShared");
+            if (real)
+                return real(SRWLock);
+
+            // the only use is d3d12 / vulkan memory allocation
+            // do nothing
+            return;
         }
     }
 
@@ -1090,18 +1156,23 @@ namespace Win32Thunk_6_0
 #define DwmSetWindowAttribute     Win32Thunk_6_0::DwmApi::DwmSetWindowAttribute
 
 #define ConvertInterfaceIndexToLuid Win32Thunk_6_0::IpHlpApi::ConvertInterfaceIndexToLuid
+#define ConvertInterfaceLuidToGuid  Win32Thunk_6_0::IpHlpApi::ConvertInterfaceLuidToGuid
 #define ConvertInterfaceLuidToIndex Win32Thunk_6_0::IpHlpApi::ConvertInterfaceLuidToIndex
 #define ConvertInterfaceLuidToNameW Win32Thunk_6_0::IpHlpApi::ConvertInterfaceLuidToNameW
 #define ConvertInterfaceNameToLuidW Win32Thunk_6_0::IpHlpApi::ConvertInterfaceNameToLuidW
 #define GetAdaptersAddresses        Win32Thunk_6_0::IpHlpApi::GetAdaptersAddresses
 
 #undef CreateNamedPipe
+#define AcquireSRWLockExclusive      Win32Thunk_6_0::Kernel32::AcquireSRWLockExclusive
+#define AcquireSRWLockShared         Win32Thunk_6_0::Kernel32::AcquireSRWLockShared
 #define CancelIoEx                   Win32Thunk_6_0::Kernel32::CancelIoEx
 #define CompareStringEx              Win32Thunk_6_0::Kernel32::CompareStringEx
 #define CreateNamedPipe              Win32Thunk_6_0::Kernel32::CreateNamedPipeW
 #define GetFileInformationByHandleEx Win32Thunk_6_0::Kernel32::GetFileInformationByHandleEx
 #define GetTickCount64               Win32Thunk_6_0::Kernel32::GetTickCount64
 #define GetUserPreferredUILanguages  Win32Thunk_6_0::Kernel32::GetUserPreferredUILanguages
+#define ReleaseSRWLockExclusive      Win32Thunk_6_0::Kernel32::ReleaseSRWLockExclusive
+#define ReleaseSRWLockShared         Win32Thunk_6_0::Kernel32::ReleaseSRWLockShared
 
 #ifndef _UCRT
 # define _wgetenv_s Win32Thunk_6_0::Msvcrt::_wgetenv_s
