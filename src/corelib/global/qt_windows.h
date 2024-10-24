@@ -117,6 +117,7 @@
 #include <knownfolders.h>
 #include <roapi.h>
 #include <shellapi.h>
+#include <shellscalingapi.h>
 #include <shlobj.h>
 #include <versionhelpers.h>
 #include <winstring.h>
@@ -1365,9 +1366,49 @@ namespace Win32Thunk_6_3
             return E_NOTIMPL;
         }
     }
+
+    namespace Shcore
+    {
+        namespace Detail
+        {
+            inline int GetDpiFromDeviceCaps()
+            {
+                HDC hdc = GetDC(nullptr);
+                int dpi = 96;
+                if (hdc)
+                    dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+                ReleaseDC(nullptr, hdc);
+                return dpi;
+            }
+        }
+
+        inline HRESULT GetDpiForMonitor(
+            _In_ HMONITOR hmonitor,
+            _In_ MONITOR_DPI_TYPE dpiType,
+            _Out_ UINT *dpiX,
+            _Out_ UINT *dpiY
+        ) {
+            using type = decltype(&::GetDpiForMonitor);
+            static HMODULE module = LoadLibraryW(L"shcore.dll");
+            if (module) {
+                static type real = (type)GetProcAddress(module, "GetDpiForMonitor");
+                if (real)
+                    return real(hmonitor, dpiType, dpiX, dpiY);
+            }
+
+            static int dpi = Detail::GetDpiFromDeviceCaps();
+            if (!dpiX || !dpiY)
+                return E_INVALIDARG;
+            *dpiX = dpi;
+            *dpiY = dpi;
+            return S_OK;
+        }
+    }
 }
 
 #define CreateDXGIFactory2 Win32Thunk_6_3::Dxgi::CreateDXGIFactory2
+
+#define GetDpiForMonitor Win32Thunk_6_3::Shcore::GetDpiForMonitor
 
 namespace Win32Thunk_10_0
 {
